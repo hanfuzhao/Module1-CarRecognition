@@ -1,0 +1,10 @@
+{
+  "buildCommand": "pip install -r requirements.txt && python init_app.py",
+  "startCommand": "gunicorn -w 2 -b 0.0.0.0:$PORT main:app",
+  "envVars": [
+    {
+      "key": "FLASK_ENV",
+      "value": "production"
+    }
+  ]
+}
