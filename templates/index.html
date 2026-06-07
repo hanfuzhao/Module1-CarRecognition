@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 识车 - Car Type Recognition</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚗 AI 识车</h1>
+            <p class="subtitle">Advanced Car Type Recognition</p>
+        </header>
+
+        <main class="main-content">
+            <div class="upload-section">
+                <div class="upload-box" id="uploadBox">
+                    <input type="file" id="imageInput" accept="image/*" style="display:none">
+                    <div class="upload-icon">📸</div>
+                    <p class="upload-text">Click to upload or drag & drop</p>
+                    <p class="upload-hint">Supported: JPG, PNG (max 16MB)</p>
+                </div>
+                <div id="imagePreview" class="image-preview" style="display:none;">
+                    <img id="previewImg" src="" alt="Preview">
+                    <button id="changeBtn" class="btn-secondary">Change Image</button>
+                </div>
+            </div>
+
+            <div id="results" class="results-section" style="display:none;">
+                <div class="result-card">
+                    <h2>🎯 Prediction Result</h2>
+                    <div class="prediction-box">
+                        <div id="mainPrediction"></div>
+                    </div>
+
+                    <h3>Top 5 Candidates</h3>
+                    <div id="topCandidates" class="candidates-list"></div>
+
+                    <div id="feedback" class="feedback-box"></div>
+                </div>
+            </div>
+
+            <div id="loading" class="loading" style="display:none;">
+                <div class="spinner"></div>
+                <p>Analyzing image...</p>
+            </div>
+
+            <div id="error" class="error-box" style="display:none;">
+                <p id="errorMsg"></p>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Module 1 Project - Stanford Cars Classification</p>
+            <p>Models: Naive Baseline | Classical ML (SVM) | Deep Learning (ResNet50)</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
