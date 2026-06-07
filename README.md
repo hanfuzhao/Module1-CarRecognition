@@ -4,7 +4,7 @@
 > **Due:** Wed Jun 10, 2026 11:59pm · 150 points
 
 ## Project Topic
-*(TBD — choose a CV domain. Must be NEW work, not reused from another course/research/job.)*
+**Car Type Recognition (AI识车)** — Fine-grained image classification on Stanford Cars dataset (196 classes, ~16k images). Maps to DZD's vehicle recognition feature while demonstrating long-tail robustness and confidence-based filtering mechanisms.
 
 ## Requirements Checklist
 
@@ -64,9 +64,56 @@
 - Descriptive names, docstrings, comments
 - Attribute any external/AI code with a source link at top of file
 
-## Setup
+## Implementation Overview
+
+### Three Modeling Approaches
+
+1. **Naive Baseline**: Majority class classifier + random classifier
+   - Location: `scripts/model.py::NaiveBaseline`
+
+2. **Classical ML**: HOG features + SVM / Random Forest  
+   - Location: `scripts/model.py::ClassicalMLModel`
+   - Feature pipeline: color histograms + HOG + PCA
+
+3. **Deep Learning**: Fine-tuned ResNet50 / EfficientNet + CLIP zero-shot
+   - Location: `scripts/model.py::DeepLearningModel`
+   - Transfer learning from ImageNet pretrained weights
+
+### Experiment: Long-Tail Performance Analysis & Confidence Filtering
+- Measure accuracy gap between head classes (frequent) vs tail classes (rare)
+- Implement confidence-based rejection mechanism
+- Evaluate precision-recall curves at different confidence thresholds
+- Location: `scripts/experiment.py`
+
+### Key Novelty
+CLIP zero-shot vs fine-tuned performance comparison + rejection-based UX improvement (when uncertain, ask user to retake photo)
+
+## Setup & Quick Start
 ```bash
+# Install dependencies
 pip install -r requirements.txt
-python setup.py        # get data, build features, train model
-python main.py         # run UI / project
+
+# Download dataset & run EDA
+python scripts/make_dataset.py
+python scripts/eda.py
+
+# Train models
+python setup.py
+
+# Run interactive app
+python main.py
+```
+
+## Project Structure
+```
+├── data/raw/           ← Stanford Cars images (train/test by class)
+├── data/processed/     ← Extracted features & preprocessed data
+├── models/             ← Saved model weights
+├── scripts/
+│   ├── make_dataset.py ← Download & organize dataset
+│   ├── eda.py          ← Exploratory data analysis
+│   ├── build_features.py ← Feature extraction pipeline
+│   └── model.py        ← All three model implementations
+├── notebooks/          ← Research & exploration (not graded)
+└── main.py            ← Interactive Flask/Streamlit app
 ```
