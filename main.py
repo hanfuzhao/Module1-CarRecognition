@@ -176,13 +176,17 @@ def too_large(e):
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_ENV") == "development"
+
     print("=" * 60)
     print("Car Type Recognition - Interactive App")
     print("=" * 60)
     print(f"Models loaded: {list(predictor.models.keys())}")
     print(f"Available classes: {len(predictor.class_names)}")
-    print("\nStarting Flask server...")
-    print("Access at: http://localhost:5000")
+    print(f"Device: {predictor.device}")
+    print(f"\nStarting Flask server on port {port}...")
+    print("Access at: http://localhost:" + str(port))
     print("=" * 60)
 
-    app.run(debug=False, host="0.0.0.0", port=5000)
+    app.run(debug=debug, host="0.0.0.0", port=port, threaded=True)

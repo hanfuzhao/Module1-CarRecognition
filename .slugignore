@@ -1,0 +1,10 @@
+# Don't upload large data/models to Heroku
+data/raw/
+data/processed/
+*.pkl
+*.pt
+.git/
+.github/
+notebooks/
+*.md
+.DS_Store
