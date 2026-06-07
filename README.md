@@ -1,7 +1,16 @@
-# Module 1 Project — Computer Vision
+# 🚗 Car Type Recognition - Module 1 Project
 
-> 540 Summer · Module 1 · Project 1
-> **Due:** Wed Jun 10, 2026 11:59pm · 150 points
+> **540 Summer · Module 1 · Project 1**  
+> **Due:** Wed Jun 10, 2026 11:59pm · 150 points  
+> **GitHub:** https://github.com/hanfuzhao/Module1-CarRecognition
+
+## 🚀 Deploy to Render (One-Click)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/hanfuzhao/Module1-CarRecognition)
+
+**Or follow:** [DEPLOYMENT.md](DEPLOYMENT.md) for manual deployment (5 minutes)
+
+---
 
 ## Project Topic
 **Car Type Recognition (AI识车)** — Fine-grained image classification on Stanford Cars dataset (196 classes, ~16k images). Maps to DZD's vehicle recognition feature while demonstrating long-tail robustness and confidence-based filtering mechanisms.
