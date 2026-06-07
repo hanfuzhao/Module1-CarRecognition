@@ -1,13 +1,19 @@
 """
-Setup script: Download data, train baseline models, evaluate.
-Run: python setup.py
+Setup script: Download data, train all models (baseline + DL), evaluate.
+Run: python setup.py [--baseline-only] [--no-dl]
 """
 
 import sys
 import json
 from pathlib import Path
 from scripts.model import NaiveBaseline, ClassicalMLModel
-from scripts.build_features import get_image_paths
+from scripts.build_features import get_image_paths, build_dataloaders
+
+try:
+    from scripts.train_dl import train_resnet50
+    DL_AVAILABLE = True
+except ImportError:
+    DL_AVAILABLE = False
 
 
 def train_baseline_models(data_dir: str = "data/raw/stanford-cars", output_dir: str = "models"):
@@ -72,7 +78,46 @@ def train_baseline_models(data_dir: str = "data/raw/stanford-cars", output_dir: 
     return summary
 
 
-if __name__ == "__main__":
+def main():
+    """Full setup pipeline."""
     print("Setting up Stanford Cars Car Type Recognition project...")
-    train_baseline_models()
+
+    # Train baseline models
+    baseline_results = train_baseline_models()
+
+    # Train DL models (optional)
+    if "--no-dl" not in sys.argv and DL_AVAILABLE:
+        print("\nWould you like to train deep learning models? (y/n)")
+        if input().lower().startswith("y"):
+            try:
+                print("\nBuilding data loaders...")
+                train_loader, val_loader, test_loader = build_dataloaders(batch_size=32, num_workers=4)
+
+                dl_results = train_resnet50(train_loader, val_loader, test_loader, epochs=5)
+
+                # Merge results
+                summary = {
+                    **baseline_results,
+                    "resnet50_accuracy": float(dl_results["accuracy"]),
+                }
+
+                with open("models/all_results.json", "w") as f:
+                    json.dump(summary, f, indent=2)
+
+                print("\n" + "=" * 60)
+                print("FINAL RESULTS")
+                print("=" * 60)
+                for model, acc in summary.items():
+                    print(f"  {model}: {acc:.4f}")
+
+            except Exception as e:
+                print(f"Error during DL training: {e}")
+                print("Continuing with baseline results only...")
+    elif not DL_AVAILABLE:
+        print("\nNote: DL training requires torch. Install with: pip install torch torchvision")
+
     print("\n✓ Setup complete!")
+
+
+if __name__ == "__main__":
+    main()
