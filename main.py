@@ -1,6 +1,4 @@
-# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
-# External frameworks: Flask (https://flask.palletsprojects.com/),
-# PyTorch/torchvision (https://pytorch.org/). Uses the DeepModel from scripts/model.py.
+# Built with AI assistance (Claude). Uses Flask and torch/torchvision.
 """
 Interactive web app for car-type recognition (inference only).
 
@@ -55,7 +53,7 @@ class PredictionService:
                 "level": "low_confidence",
                 "message": f"Only {confidence:.0%} confident. The photo may be unclear, "
                            f"cropped, or an angle the model hasn't seen.",
-                "suggestion": "📸 Try a clearer, well-lit photo of the whole car (3/4 front view).",
+                "suggestion": "Try a clearer, well-lit photo of the whole car (3/4 front view).",
             }
         else:
             feedback = {

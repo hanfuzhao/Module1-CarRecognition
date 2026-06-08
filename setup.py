@@ -1,15 +1,13 @@
-# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
-# External libraries: PyTorch/torchvision (https://pytorch.org/vision/stable/),
-# scikit-learn (https://scikit-learn.org/), matplotlib (https://matplotlib.org/).
+# Built with AI assistance (Claude). Uses torch/torchvision, scikit-learn, matplotlib.
 """
-End-to-end pipeline: build data artifacts, train all three models, evaluate
-on the real test set, run the robustness + confidence experiments, and write
-real metrics / plots to data/outputs and trained models to models/.
+End-to-end pipeline: build data artifacts, train all three models, evaluate on
+the test set, run the robustness and confidence experiments, and write metrics
+and plots to data/outputs and trained models to models/.
 
-Run:  python setup.py
+Run: python setup.py
 
-Heavy intermediate artifacts (ResNet features) are cached under data/processed,
-so re-running is fast and a failure midway does not lose completed work.
+ResNet features are cached under data/processed so a re-run is fast and a
+failure midway does not lose completed work.
 """
 
 import os
@@ -53,9 +51,6 @@ ROBUSTNESS_CORRUPTIONS = ["gaussian_noise", "motion_blur", "jpeg_compression", "
 ROBUSTNESS_SAMPLE = 2500  # images per corruption split (kept fast; noted in report)
 
 
-# --------------------------------------------------------------------------- #
-# feature caching
-# --------------------------------------------------------------------------- #
 def cached_deep_features(deep: DeepModel, split_name: str, limit: int | None = None):
     """Extract (and cache) ResNet50 features + labels for a split.
 
@@ -114,9 +109,6 @@ def cached_hog_features(model: ClassicalModel, split_name: str):
     return feats, ys
 
 
-# --------------------------------------------------------------------------- #
-# plots
-# --------------------------------------------------------------------------- #
 def plot_model_comparison(results: dict):
     names = ["Naive (majority)", "Naive (random)", "Classical (HOG+SVM)", "Deep (ResNet50+MLP)"]
     accs = [
@@ -200,9 +192,6 @@ def save_sample_images(class_names):
     plt.close()
 
 
-# --------------------------------------------------------------------------- #
-# error analysis
-# --------------------------------------------------------------------------- #
 def error_analysis(y_true, proba, class_names, k=5):
     y_pred = proba.argmax(1)
     conf = proba.max(1)
@@ -223,9 +212,6 @@ def error_analysis(y_true, proba, class_names, k=5):
     return cases
 
 
-# --------------------------------------------------------------------------- #
-# main
-# --------------------------------------------------------------------------- #
 def main():
     t_start = time.time()
     ensure_dirs()

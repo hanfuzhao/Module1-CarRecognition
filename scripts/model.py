@@ -1,20 +1,9 @@
-# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
-# External code/components used:
-#   - torchvision ResNet50 + ImageNet weights:
-#     https://pytorch.org/vision/stable/models/resnet.html
-#   - scikit-learn SGDClassifier / metrics: https://scikit-learn.org/
-#   - scikit-image HOG: https://scikit-image.org/stable/auto_examples/features_detection/plot_hog.html
+# Built with AI assistance (Claude). Uses torchvision ResNet50, scikit-learn, scikit-image.
 """
-Model implementations for Stanford Cars fine-grained classification.
-
-Three approaches required by the assignment:
-  1. NaiveBaseline   - majority-class / random  (performance floor)
-  2. ClassicalModel  - HOG features + linear SVM (non-deep ML)
-  3. DeepModel       - frozen ResNet50 features + trained MLP head (transfer learning)
-
-The DeepModel is the deployed model. It keeps the heavy ImageNet backbone
-frozen (downloaded at runtime by torchvision) and only learns a small MLP
-head, so the saved artifact is a few MB and trivially deployable.
+Model implementations for Stanford Cars classification: a naive baseline, a
+classical HOG + linear SVM, and a transfer-learning deep model (frozen ResNet50
+features with a trained MLP head). The deep model is the one we deploy; keeping
+the backbone frozen means the saved artifact is only a few MB.
 """
 
 from __future__ import annotations
@@ -38,7 +27,6 @@ import torch.nn as nn
 
 
 def pick_device() -> str:
-    """Prefer Apple-Silicon MPS, then CUDA, then CPU."""
     if torch.backends.mps.is_available():
         return "mps"
     if torch.cuda.is_available():
@@ -46,11 +34,8 @@ def pick_device() -> str:
     return "cpu"
 
 
-# --------------------------------------------------------------------------- #
-# 1. Naive baseline
-# --------------------------------------------------------------------------- #
 class NaiveBaseline:
-    """Majority-class or uniform-random classifier."""
+    """Majority-class or uniform-random classifier (the performance floor)."""
 
     def __init__(self, strategy: str = "majority"):
         assert strategy in ("majority", "random")
@@ -75,16 +60,12 @@ class NaiveBaseline:
             pickle.dump(self, f)
 
 
-# --------------------------------------------------------------------------- #
-# 2. Classical ML: HOG + linear SVM
-# --------------------------------------------------------------------------- #
 class ClassicalModel:
-    """Histogram-of-Oriented-Gradients features fed to a linear SVM.
+    """HOG features fed to a linear SVM.
 
-    The linear SVM is trained with SGD (hinge loss) rather than the dual
-    LibLinear solver: on ~8k samples x 1764 dims with 196 one-vs-rest classes
-    the SGD solver converges in seconds instead of many minutes, with
-    equivalent accuracy.
+    The SVM is trained with SGD (hinge loss) rather than the dual LibLinear
+    solver, which does not converge in reasonable time on 196 one-vs-rest
+    classes; SGD reaches the same decision rule in seconds.
     """
 
     def __init__(self, img_size: int = 128):
@@ -125,9 +106,6 @@ class ClassicalModel:
             pickle.dump(self, f)
 
 
-# --------------------------------------------------------------------------- #
-# 3. Deep learning: frozen ResNet50 backbone + MLP head
-# --------------------------------------------------------------------------- #
 class _MLPHead(nn.Module):
     def __init__(self, in_dim: int, num_classes: int, hidden: int = 512, p: float = 0.4):
         super().__init__()
@@ -144,7 +122,7 @@ class _MLPHead(nn.Module):
 
 
 class DeepModel:
-    """Transfer-learning classifier: frozen ResNet50 features -> MLP head."""
+    """Frozen ResNet50 features with a trained MLP head (transfer learning)."""
 
     FEAT_DIM = 2048
 
@@ -157,7 +135,6 @@ class DeepModel:
         self._transform = None
         self.head = _MLPHead(self.FEAT_DIM, num_classes).to(self.device)
 
-    # -- backbone (lazy: only built when needed) ---------------------------- #
     def _ensure_backbone(self):
         if self._backbone is not None:
             return
@@ -175,7 +152,6 @@ class DeepModel:
     @torch.no_grad()
     def extract_features(self, images: Sequence[Image.Image], batch_size: int = 64,
                          progress: bool = False) -> np.ndarray:
-        """Run the frozen backbone to produce (N, 2048) feature vectors."""
         self._ensure_backbone()
         feats = []
         for i in range(0, len(images), batch_size):
@@ -187,7 +163,6 @@ class DeepModel:
                 print(f"    features {i + len(batch)}/{len(images)}", flush=True)
         return np.concatenate(feats, axis=0)
 
-    # -- train head on cached features -------------------------------------- #
     def fit_features(self, feats: np.ndarray, y: np.ndarray, epochs: int = 60,
                      lr: float = 1e-3, batch_size: int = 256) -> "DeepModel":
         X = torch.tensor(feats, dtype=torch.float32)
@@ -227,7 +202,6 @@ class DeepModel:
     def predict(self, images: Sequence[Image.Image]) -> np.ndarray:
         return self.predict_proba(images).argmax(axis=1)
 
-    # -- persistence (small: head + metadata only) -------------------------- #
     def save(self, path: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         torch.save(
@@ -250,9 +224,6 @@ class DeepModel:
         return model
 
 
-# --------------------------------------------------------------------------- #
-# shared metric helper
-# --------------------------------------------------------------------------- #
 def evaluate_predictions(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     return {"accuracy": float(accuracy_score(y_true, y_pred))}
 

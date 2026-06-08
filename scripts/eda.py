@@ -1,6 +1,4 @@
-# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
-# External libraries: matplotlib (https://matplotlib.org/),
-# Hugging Face datasets (https://huggingface.co/docs/datasets/).
+# Built with AI assistance (Claude). Uses matplotlib and Hugging Face datasets.
 """
 Exploratory data analysis for Stanford Cars.
 
