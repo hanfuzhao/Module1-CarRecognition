@@ -1,208 +1,88 @@
 """
-Experiment: Long-tail performance analysis + confidence-based rejection.
-Investigates robustness on rare car types (tail classes).
+Analysis utilities for the experiments and results section.
+
+  * confidence_rejection  - selective-prediction accuracy/coverage trade-off
+                            (the previous version compared y_true to itself and
+                            always returned 1.0; this is the corrected version
+                            that actually uses the model's predictions)
+  * per_class_accuracy    - accuracy per class, used for head/tail analysis
+  * head_tail_gap         - accuracy gap between frequent and rare classes
 """
 
-import json
-from pathlib import Path
+from typing import List
+
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import precision_recall_curve, confusion_matrix
-import torch
 
 
-class LongTailAnalyzer:
-    """Analyze model performance on head vs tail classes."""
+def confidence_rejection(y_true: np.ndarray, proba: np.ndarray,
+                         thresholds: List[float] | None = None) -> List[dict]:
+    """
+    Selective prediction: accept a prediction only when its top softmax
+    probability is >= threshold; report accuracy on the accepted subset and
+    the coverage (fraction accepted).
+    """
+    if thresholds is None:
+        thresholds = [round(t, 2) for t in np.linspace(0.0, 0.95, 20)]
 
-    def __init__(self, y_true: np.ndarray, y_pred: np.ndarray, class_counts: list = None):
-        """
-        Args:
-            y_true: Ground truth labels
-            y_pred: Predicted labels
-            class_counts: Number of training samples per class
-        """
-        self.y_true = y_true
-        self.y_pred = y_pred
-        self.class_counts = class_counts or np.bincount(y_true)
-        self.num_classes = len(self.class_counts)
+    y_pred = proba.argmax(axis=1)
+    conf = proba.max(axis=1)
+    correct = y_pred == y_true
+    n = len(y_true)
 
-    def compute_per_class_accuracy(self):
-        """Compute accuracy per class."""
-        per_class_acc = {}
-        for class_id in range(self.num_classes):
-            mask = self.y_true == class_id
-            if mask.sum() == 0:
-                continue
-            acc = (self.y_pred[mask] == class_id).mean()
-            per_class_acc[class_id] = float(acc)
-        return per_class_acc
+    rows = []
+    for thr in thresholds:
+        accept = conf >= thr
+        cov = float(accept.mean())
+        acc = float(correct[accept].mean()) if accept.any() else 0.0
+        rows.append(
+            {"threshold": float(thr), "accuracy": acc, "coverage": cov,
+             "rejected": int(n - accept.sum())}
+        )
+    return rows
 
-    def split_head_tail(self, percentile: float = 50.0):
-        """Split classes into head and tail based on training distribution."""
-        threshold = np.percentile(self.class_counts, percentile)
 
-        head_classes = np.where(self.class_counts >= threshold)[0]
-        tail_classes = np.where(self.class_counts < threshold)[0]
+def per_class_accuracy(y_true: np.ndarray, y_pred: np.ndarray,
+                       num_classes: int) -> np.ndarray:
+    """Return an array of per-class accuracy (NaN for classes absent in y_true)."""
+    accs = np.full(num_classes, np.nan)
+    for c in range(num_classes):
+        mask = y_true == c
+        if mask.any():
+            accs[c] = (y_pred[mask] == c).mean()
+    return accs
 
-        head_mask = np.isin(self.y_true, head_classes)
-        tail_mask = np.isin(self.y_true, tail_classes)
 
-        head_acc = (self.y_pred[head_mask] == self.y_true[head_mask]).mean() if head_mask.sum() > 0 else 0
-        tail_acc = (self.y_pred[tail_mask] == self.y_true[tail_mask]).mean() if tail_mask.sum() > 0 else 0
+def head_tail_gap(y_true: np.ndarray, y_pred: np.ndarray,
+                  train_counts: np.ndarray, num_classes: int) -> dict:
+    """Compare accuracy on the most-frequent vs least-frequent training classes."""
+    median = float(np.median(train_counts))
+    head = np.where(train_counts >= median)[0]
+    tail = np.where(train_counts < median)[0]
 
-        return {
-            "head_threshold": float(threshold),
-            "num_head_classes": len(head_classes),
-            "num_tail_classes": len(tail_classes),
-            "head_accuracy": float(head_acc),
-            "tail_accuracy": float(tail_acc),
-            "performance_gap": float(head_acc - tail_acc),
+    head_mask = np.isin(y_true, head)
+    tail_mask = np.isin(y_true, tail)
+    head_acc = float((y_pred[head_mask] == y_true[head_mask]).mean()) if head_mask.any() else 0.0
+    tail_acc = float((y_pred[tail_mask] == y_true[tail_mask]).mean()) if tail_mask.any() else 0.0
+
+    return {
+        "median_train_count": median,
+        "num_head_classes": int(len(head)),
+        "num_tail_classes": int(len(tail)),
+        "head_accuracy": head_acc,
+        "tail_accuracy": tail_acc,
+        "gap": head_acc - tail_acc,
+    }
+
+
+def summarize_robustness(clean_acc: float, corruption_accs: dict) -> dict:
+    """Summarize accuracy drop under each corruption relative to the clean set."""
+    rows = {}
+    for name, acc in corruption_accs.items():
+        rows[name] = {
+            "accuracy": float(acc),
+            "absolute_drop": float(clean_acc - acc),
+            "relative_drop_pct": float(100.0 * (clean_acc - acc) / clean_acc) if clean_acc else 0.0,
         }
-
-    def analyze(self):
-        """Full long-tail analysis."""
-        per_class_acc = self.compute_per_class_accuracy()
-        head_tail_split = self.split_head_tail()
-
-        results = {
-            "overall_accuracy": float((self.y_pred == self.y_true).mean()),
-            "per_class_accuracy_stats": {
-                "mean": float(np.mean(list(per_class_acc.values()))),
-                "std": float(np.std(list(per_class_acc.values()))),
-                "min": float(min(per_class_acc.values())),
-                "max": float(max(per_class_acc.values())),
-            },
-            "head_vs_tail": head_tail_split,
-        }
-
-        return results
-
-
-class ConfidenceFilterExperiment:
-    """Evaluate model with confidence-based rejection."""
-
-    def __init__(self, y_true: np.ndarray, confidences: np.ndarray):
-        """
-        Args:
-            y_true: Ground truth labels
-            confidences: Model confidence scores (0-1) for predictions
-        """
-        self.y_true = y_true
-        self.confidences = confidences
-
-    def evaluate_at_thresholds(self, thresholds: list = None):
-        """Evaluate accuracy at different confidence thresholds."""
-        if thresholds is None:
-            thresholds = np.linspace(0.0, 1.0, 11)
-
-        results = []
-        for threshold in thresholds:
-            # Only evaluate on predictions above threshold
-            valid_mask = self.confidences >= threshold
-            if valid_mask.sum() == 0:
-                results.append({"threshold": float(threshold), "accuracy": 0, "coverage": 0, "rejected": len(self.y_true)})
-                continue
-
-            accuracy = (self.y_true[valid_mask] == self.y_true[valid_mask]).mean() if valid_mask.sum() > 0 else 0
-            coverage = valid_mask.sum() / len(self.y_true)
-            rejected = (~valid_mask).sum()
-
-            results.append(
-                {
-                    "threshold": float(threshold),
-                    "accuracy": float(accuracy),
-                    "coverage": float(coverage),
-                    "rejected": int(rejected),
-                }
-            )
-
-        return results
-
-    def plot_confidence_curve(self, output_path: str = "data/outputs/confidence_curve.png"):
-        """Plot accuracy vs confidence threshold."""
-        thresholds = np.linspace(0.0, 1.0, 11)
-        results = self.evaluate_at_thresholds(thresholds.tolist())
-
-        thresholds = [r["threshold"] for r in results]
-        accuracies = [r["accuracy"] for r in results]
-        coverages = [r["coverage"] for r in results]
-
-        fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-
-        # Accuracy curve
-        axes[0].plot(thresholds, accuracies, "o-", linewidth=2, markersize=6)
-        axes[0].set_xlabel("Confidence Threshold")
-        axes[0].set_ylabel("Accuracy (on accepted samples)")
-        axes[0].set_title("Accuracy vs Confidence Threshold")
-        axes[0].grid(True, alpha=0.3)
-
-        # Coverage curve
-        axes[1].plot(thresholds, coverages, "s-", color="orange", linewidth=2, markersize=6)
-        axes[1].set_xlabel("Confidence Threshold")
-        axes[1].set_ylabel("Coverage (% samples accepted)")
-        axes[1].set_title("Coverage vs Confidence Threshold")
-        axes[1].grid(True, alpha=0.3)
-
-        plt.tight_layout()
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(output_path, dpi=100, bbox_inches="tight")
-        print(f"✓ Saved confidence curve to {output_path}")
-
-        return results
-
-
-def run_long_tail_experiment(
-    y_true: np.ndarray, y_pred: np.ndarray, class_counts: list, output_dir: str = "data/outputs"
-):
-    """Run full long-tail analysis experiment."""
-
-    print("\n" + "=" * 60)
-    print("EXPERIMENT: Long-Tail Performance Analysis")
-    print("=" * 60)
-
-    analyzer = LongTailAnalyzer(y_true, y_pred, class_counts)
-    results = analyzer.analyze()
-
-    print("\nResults:")
-    print(f"  Overall Accuracy: {results['overall_accuracy']:.4f}")
-    print(f"  Head Classes Accuracy: {results['head_vs_tail']['head_accuracy']:.4f}")
-    print(f"  Tail Classes Accuracy: {results['head_vs_tail']['tail_accuracy']:.4f}")
-    print(f"  Performance Gap: {results['head_vs_tail']['performance_gap']:.4f}")
-
-    # Save results
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    with open(f"{output_dir}/longtail_analysis.json", "w") as f:
-        json.dump(results, f, indent=2)
-
-    return results
-
-
-def run_confidence_experiment(y_pred: np.ndarray, confidences: np.ndarray, output_dir: str = "data/outputs"):
-    """Run confidence-based rejection experiment."""
-
-    print("\n" + "=" * 60)
-    print("EXPERIMENT: Confidence-Based Rejection")
-    print("=" * 60)
-
-    exp = ConfidenceFilterExperiment(y_pred, confidences)
-
-    results = exp.evaluate_at_thresholds()
-    print("\nConfidence Threshold Analysis:")
-    print("Threshold | Accuracy | Coverage | Rejected")
-    print("-" * 45)
-    for r in results:
-        print(f"{r['threshold']:8.2f}  | {r['accuracy']:8.4f} | {r['coverage']:8.4f} | {r['rejected']:8d}")
-
-    # Save results
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    with open(f"{output_dir}/confidence_analysis.json", "w") as f:
-        json.dump(results, f, indent=2)
-
-    # Plot
-    exp.plot_confidence_curve(f"{output_dir}/confidence_curve.png")
-
-    return results
-
-
-if __name__ == "__main__":
-    print("Experiment module ready. Use in training scripts.")
+    if corruption_accs:
+        rows["mean_corruption_accuracy"] = float(np.mean(list(corruption_accs.values())))
+    return rows
