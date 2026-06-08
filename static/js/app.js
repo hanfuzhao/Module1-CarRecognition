@@ -103,29 +103,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const feedbackBox = document.getElementById('feedback');
 
         // Main prediction
-        if (data.primary) {
-            const pred = data.primary;
-            const confidence = (pred.confidence * 100).toFixed(1);
+        if (data.prediction) {
+            const confidence = (data.confidence * 100).toFixed(1);
 
             mainPrediction.innerHTML = `
                 <div class="prediction-label">🔍 Model Prediction</div>
-                <div class="prediction-item">${pred.prediction}</div>
+                <div class="prediction-item">${data.prediction}</div>
                 <div class="prediction-label">Confidence Score</div>
                 <div class="confidence-bar">
                     <div class="confidence-fill" style="width: ${confidence}%">
                         ${confidence}%
                     </div>
                 </div>
-                <div class="prediction-label">Model: ${pred.model}</div>
+                <div class="prediction-label">Model: ResNet50 features + MLP head</div>
             `;
 
             // Top 5 candidates
             topCandidates.innerHTML = '';
-            pred.top_5.forEach((item, index) => {
+            (data.top_k || []).forEach((item, index) => {
                 const pct = (item.confidence * 100).toFixed(1);
                 topCandidates.innerHTML += `
                     <div class="candidate-item">
-                        <div class="candidate-name">#${index + 1}. ${item.class}</div>
+                        <div class="candidate-name">#${index + 1}. ${item.label}</div>
                         <div class="candidate-score">${pct}%</div>
                     </div>
                 `;

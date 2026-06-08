@@ -1,192 +1,118 @@
 """
-Interactive Flask application for car type recognition.
-Upload image → Get prediction + confidence scores + guidance.
+Interactive web app for car-type recognition (inference only).
 
-Run: python main.py
-Access: http://localhost:5000
+Upload a car photo -> the deployed deep model (frozen ResNet50 features + MLP
+head) returns the top-5 predicted makes/models with confidence, plus
+confidence-aware guidance (low confidence -> suggest a clearer photo).
+
+Run:  python main.py    then open http://localhost:5000
 """
 
 import os
+
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+import io
 import json
 from pathlib import Path
+
 import numpy as np
 from PIL import Image
-import torch
-import torchvision.transforms as transforms
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify
 
-from scripts.model import NaiveBaseline, ClassicalMLModel, DeepLearningModel
+from scripts.model import DeepModel
+
+MODEL_PATH = Path("models/deep_resnet50_mlp.pt")
+METADATA_PATH = Path("data/raw/stanford-cars/metadata.json")
+CONFIDENCE_THRESHOLD = 0.40  # below this we ask the user for a clearer photo
 
 
 class PredictionService:
-    """Inference service combining all three models."""
+    """Loads the deployed deep model once and serves predictions."""
 
-    def __init__(self, model_dir: str = "models", device: str = None):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.model_dir = model_dir
-        self.models = {}
-        self.class_names = self._load_class_names()
-        self.load_models()
+    def __init__(self):
+        self.model = DeepModel.load(str(MODEL_PATH))
+        self.model._ensure_backbone()  # warm up the frozen ResNet50 backbone
+        self.class_names = self.model.class_names or self._fallback_names()
 
-    def _load_class_names(self):
-        """Load class names from metadata."""
-        metadata_path = Path("data/raw/stanford-cars/metadata.json")
-        if metadata_path.exists():
-            with open(metadata_path, "r") as f:
-                metadata = json.load(f)
-                return metadata["class_names"]
-        return [f"Class {i}" for i in range(196)]
+    def _fallback_names(self):
+        if METADATA_PATH.exists():
+            return json.loads(METADATA_PATH.read_text())["class_names"]
+        return [f"Class {i}" for i in range(self.model.num_classes)]
 
-    def load_models(self):
-        """Load trained models."""
-        try:
-            naive_path = f"{self.model_dir}/naive_majority.pkl"
-            if Path(naive_path).exists():
-                self.models["naive"] = NaiveBaseline.load(naive_path)
-        except Exception as e:
-            print(f"Warning: Could not load naive baseline: {e}")
+    def predict(self, image: Image.Image, topk: int = 5) -> dict:
+        proba = self.model.predict_proba([image])[0]
+        order = np.argsort(proba)[::-1][:topk]
+        top = [{"label": self.class_names[i], "confidence": float(proba[i])} for i in order]
+        confidence = top[0]["confidence"]
 
-        try:
-            classical_path = f"{self.model_dir}/classical_svm.pkl"
-            if Path(classical_path).exists():
-                self.models["classical"] = ClassicalMLModel.load(classical_path)
-        except Exception as e:
-            print(f"Warning: Could not load classical model: {e}")
+        if confidence < CONFIDENCE_THRESHOLD:
+            feedback = {
+                "level": "low_confidence",
+                "message": f"Only {confidence:.0%} confident. The photo may be unclear, "
+                           f"cropped, or an angle the model hasn't seen.",
+                "suggestion": "📸 Try a clearer, well-lit photo of the whole car (3/4 front view).",
+            }
+        else:
+            feedback = {
+                "level": "confident",
+                "message": f"{confidence:.0%} confident this is a {top[0]['label']}.",
+            }
 
-        try:
-            dl_path = f"{self.model_dir}/resnet50_best.pt"
-            if Path(dl_path).exists():
-                self.models["deep_learning"] = DeepLearningModel.load(dl_path, num_classes=196)
-        except Exception as e:
-            print(f"Warning: Could not load DL model: {e}")
-
-    def predict(self, image_path: str, confidence_threshold: float = 0.5):
-        """Run inference and return results."""
-        image = Image.open(image_path).convert("RGB")
-
-        results = {}
-
-        # Deep Learning model (primary)
-        if "deep_learning" in self.models:
-            try:
-                probs = self.models["deep_learning"].predict_proba([image_path])[0]
-                top_5_idx = np.argsort(probs)[::-1][:5]
-                top_5_probs = probs[top_5_idx]
-
-                pred_class = top_5_idx[0]
-                confidence = float(top_5_probs[0])
-
-                results["primary"] = {
-                    "model": "ResNet50 (Fine-tuned)",
-                    "prediction": self.class_names[pred_class],
-                    "class_id": int(pred_class),
-                    "confidence": confidence,
-                    "top_5": [
-                        {"class": self.class_names[idx], "confidence": float(prob)} for idx, prob in zip(top_5_idx, top_5_probs)
-                    ],
-                }
-
-                # Confidence feedback
-                if confidence < confidence_threshold:
-                    results["feedback"] = {
-                        "level": "low_confidence",
-                        "message": f"Confidence is {confidence:.1%}. Try a different angle or lighting for better accuracy.",
-                        "suggestion": "📸 Try retaking the photo with better lighting or a different car angle.",
-                    }
-                else:
-                    results["feedback"] = {
-                        "level": "confident",
-                        "message": f"High confidence ({confidence:.1%}). This is a {results['primary']['prediction']}.",
-                    }
-            except Exception as e:
-                results["error"] = f"Deep learning inference failed: {str(e)}"
-
-        # Classical model (backup)
-        if "classical" in self.models and "primary" not in results:
-            try:
-                pred = self.models["classical"].predict([image_path])[0]
-                results["backup"] = {
-                    "model": "Classical ML (SVM)",
-                    "prediction": self.class_names[pred],
-                    "class_id": int(pred),
-                }
-            except Exception as e:
-                print(f"Classical inference failed: {e}")
-
-        return results
+        return {"prediction": top[0]["label"], "confidence": confidence,
+                "top_k": top, "feedback": feedback}
 
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
-app.config["UPLOAD_FOLDER"] = Path("static/uploads")
-app.config["UPLOAD_FOLDER"].mkdir(parents=True, exist_ok=True)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
-predictor = PredictionService()
+_service = None
+
+
+def get_service() -> PredictionService:
+    global _service
+    if _service is None:
+        _service = PredictionService()
+    return _service
 
 
 @app.route("/")
 def index():
-    """Home page."""
     return render_template("index.html")
-
-
-@app.route("/predict", methods=["POST"])
-def predict():
-    """Handle image upload and prediction."""
-    try:
-        if "image" not in request.files:
-            return jsonify({"error": "No image provided"}), 400
-
-        file = request.files["image"]
-        if file.filename == "":
-            return jsonify({"error": "No file selected"}), 400
-
-        # Save uploaded file
-        filename = f"upload_{int(np.random.random() * 1e9)}.jpg"
-        filepath = app.config["UPLOAD_FOLDER"] / filename
-        file.save(filepath)
-
-        # Run prediction
-        results = predictor.predict(str(filepath), confidence_threshold=0.6)
-
-        # Clean up (optional: keep for debugging)
-        # filepath.unlink()
-
-        return jsonify(results)
-
-    except Exception as e:
-        return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
-
-
-@app.route("/upload/<filename>")
-def get_upload(filename):
-    """Serve uploaded images."""
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
 @app.route("/health")
 def health():
-    """Health check."""
-    return jsonify({"status": "ok", "models_loaded": list(predictor.models.keys())})
+    ok = MODEL_PATH.exists()
+    return jsonify({"status": "ok" if ok else "model_missing",
+                    "num_classes": get_service().model.num_classes if ok else 0})
+
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    if "image" not in request.files or request.files["image"].filename == "":
+        return jsonify({"error": "No image provided"}), 400
+    try:
+        raw = request.files["image"].read()
+        image = Image.open(io.BytesIO(raw)).convert("RGB")
+    except Exception:
+        return jsonify({"error": "Could not read image file"}), 400
+
+    try:
+        return jsonify(get_service().predict(image))
+    except Exception as e:  # pragma: no cover - defensive
+        return jsonify({"error": f"Inference failed: {e}"}), 500
 
 
 @app.errorhandler(413)
-def too_large(e):
+def too_large(_):
     return jsonify({"error": "File too large (max 16MB)"}), 413
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_ENV") == "development"
-
-    print("=" * 60)
-    print("Car Type Recognition - Interactive App")
-    print("=" * 60)
-    print(f"Models loaded: {list(predictor.models.keys())}")
-    print(f"Available classes: {len(predictor.class_names)}")
-    print(f"Device: {predictor.device}")
-    print(f"\nStarting Flask server on port {port}...")
-    print("Access at: http://localhost:" + str(port))
-    print("=" * 60)
-
-    app.run(debug=debug, host="0.0.0.0", port=port, threaded=True)
+    print("Loading model and warming up backbone...")
+    get_service()
+    print(f"Ready. Open http://localhost:{port}")
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
