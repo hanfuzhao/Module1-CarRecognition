@@ -1,235 +1,256 @@
 """
-Model implementations for Stanford Cars classification.
-Three approaches: Naive Baseline, Classical ML, and Deep Learning.
+Model implementations for Stanford Cars fine-grained classification.
+
+Three approaches required by the assignment:
+  1. NaiveBaseline   - majority-class / random  (performance floor)
+  2. ClassicalModel  - HOG features + linear SVM (non-deep ML)
+  3. DeepModel       - frozen ResNet50 features + trained MLP head (transfer learning)
+
+The DeepModel is the deployed model. It keeps the heavy ImageNet backbone
+frozen (downloaded at runtime by torchvision) and only learns a small MLP
+head, so the saved artifact is a few MB and trivially deployable.
 """
 
+from __future__ import annotations
+
 import pickle
-from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import List, Sequence
+
 import numpy as np
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, top_k_accuracy_score
+from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from skimage import feature
+from skimage.feature import hog
+from skimage.color import rgb2gray
+from skimage.transform import resize as sk_resize
 from PIL import Image
+
 import torch
-import torchvision.transforms as transforms
+import torch.nn as nn
 
 
-class BaseModel(ABC):
-    """Abstract base class for all models."""
+def pick_device() -> str:
+    """Prefer Apple-Silicon MPS, then CUDA, then CPU."""
+    if torch.backends.mps.is_available():
+        return "mps"
+    if torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
 
-    def __init__(self, model_name: str):
-        self.model_name = model_name
-        self.model = None
+
+# --------------------------------------------------------------------------- #
+# 1. Naive baseline
+# --------------------------------------------------------------------------- #
+class NaiveBaseline:
+    """Majority-class or uniform-random classifier."""
+
+    def __init__(self, strategy: str = "majority"):
+        assert strategy in ("majority", "random")
+        self.strategy = strategy
+        self.most_common_class = None
         self.num_classes = None
 
-    @abstractmethod
-    def train(self, X_train, y_train):
-        """Train the model."""
-        pass
+    def fit(self, y_train: np.ndarray) -> "NaiveBaseline":
+        self.num_classes = int(np.max(y_train)) + 1
+        self.most_common_class = int(np.bincount(y_train).argmax())
+        return self
 
-    @abstractmethod
-    def predict(self, X):
-        """Make predictions."""
-        pass
+    def predict(self, n: int) -> np.ndarray:
+        if self.strategy == "majority":
+            return np.full(n, self.most_common_class, dtype=np.int64)
+        rng = np.random.default_rng(0)
+        return rng.integers(0, self.num_classes, n)
 
-    def evaluate(self, X_test, y_test):
-        """Evaluate model on test set."""
-        y_pred = self.predict(X_test)
-        acc = accuracy_score(y_test, y_pred)
-        return {
-            "accuracy": acc,
-            "y_pred": y_pred,
-            "report": classification_report(y_test, y_pred, output_dict=True),
-            "confusion_matrix": confusion_matrix(y_test, y_pred),
-        }
-
-    def save(self, path: str):
-        """Save model to disk."""
+    def save(self, path: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
-    @staticmethod
-    def load(path: str):
-        """Load model from disk."""
-        with open(path, "rb") as f:
-            return pickle.load(f)
 
+# --------------------------------------------------------------------------- #
+# 2. Classical ML: HOG + linear SVM
+# --------------------------------------------------------------------------- #
+class ClassicalModel:
+    """Histogram-of-Oriented-Gradients features fed to a linear SVM.
 
-class NaiveBaseline(BaseModel):
-    """Naive baseline models: Majority class and Random classifier."""
+    The linear SVM is trained with SGD (hinge loss) rather than the dual
+    LibLinear solver: on ~8k samples x 1764 dims with 196 one-vs-rest classes
+    the SGD solver converges in seconds instead of many minutes, with
+    equivalent accuracy.
+    """
 
-    def __init__(self, strategy: str = "majority"):
-        super().__init__("NaiveBaseline")
-        assert strategy in ["majority", "random"], f"Unknown strategy: {strategy}"
-        self.strategy = strategy
-        self.most_common_class = None
-
-    def train(self, X_train, y_train):
-        """Train baseline model."""
-        self.num_classes = len(np.unique(y_train))
-        if self.strategy == "majority":
-            self.most_common_class = np.bincount(y_train).argmax()
-        return self
-
-    def predict(self, X):
-        """Make predictions."""
-        n_samples = len(X) if isinstance(X, (list, np.ndarray)) else X.shape[0]
-
-        if self.strategy == "majority":
-            return np.full(n_samples, self.most_common_class)
-        else:  # random
-            return np.random.randint(0, self.num_classes, n_samples)
-
-
-class ClassicalMLModel(BaseModel):
-    """Classical ML model using HOG features + SVM."""
-
-    def __init__(self, model_type: str = "svm", img_size: int = 128):
-        super().__init__("ClassicalML")
-        self.model_type = model_type
+    def __init__(self, img_size: int = 128):
         self.img_size = img_size
-        self.feature_extractor = self._build_feature_extractor()
-        self.classifier = self._build_classifier()
-
-    def _build_feature_extractor(self):
-        """Build HOG feature extraction pipeline."""
-        return lambda img: self._extract_hog_features(img)
-
-    @staticmethod
-    def _extract_hog_features(img_path):
-        """Extract HOG features from image."""
-        img = Image.open(img_path).convert("L")
-        img = np.array(img.resize((128, 128)))
-        hog_features = feature.hog(img, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2))
-        return hog_features
-
-    def _build_classifier(self):
-        """Build classifier pipeline."""
-        if self.model_type == "svm":
-            return Pipeline([("scaler", StandardScaler()), ("svm", SVC(kernel="rbf", C=10, gamma="scale"))])
-        else:  # random_forest
-            return Pipeline([("scaler", StandardScaler()), ("rf", RandomForestClassifier(n_estimators=100, n_jobs=-1))])
-
-    def train(self, X_train, y_train):
-        """Train classical ML model. X_train should be list of image paths."""
-        print(f"Extracting HOG features from {len(X_train)} training images...")
-        X_features = np.array([self._extract_hog_features(img_path) for img_path in X_train])
-
-        print(f"Training {self.model_type} classifier...")
-        self.classifier.fit(X_features, y_train)
-        self.num_classes = len(np.unique(y_train))
-        return self
-
-    def predict(self, X):
-        """Make predictions. X can be image paths or feature arrays."""
-        if isinstance(X[0], str):
-            X = np.array([self._extract_hog_features(img_path) for img_path in X])
-
-        return self.classifier.predict(X)
-
-    def predict_proba(self, X):
-        """Predict probabilities."""
-        if isinstance(X[0], str):
-            X = np.array([self._extract_hog_features(img_path) for img_path in X])
-
-        if hasattr(self.classifier.named_steps["svm" if self.model_type == "svm" else "rf"], "predict_proba"):
-            return self.classifier.predict_proba(X)
-        return None
-
-
-class DeepLearningModel(BaseModel):
-    """Deep learning model using pretrained ResNet50 backbone."""
-
-    def __init__(self, num_classes: int = 196, pretrained: bool = True, device: str = None):
-        super().__init__("DeepLearning")
-        self.num_classes = num_classes
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = self._build_model(pretrained)
-        self.transform = transforms.Compose(
+        self.clf = Pipeline(
             [
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ("scaler", StandardScaler()),
+                ("svm", SGDClassifier(loss="hinge", alpha=1e-4, max_iter=30,
+                                      tol=1e-3, random_state=0)),
             ]
         )
 
-    def _build_model(self, pretrained: bool):
-        """Build ResNet50 backbone with custom classifier."""
-        from torchvision.models import resnet50
+    def _hog(self, image: Image.Image) -> np.ndarray:
+        arr = np.asarray(image.convert("RGB"))
+        gray = rgb2gray(arr)
+        gray = sk_resize(gray, (self.img_size, self.img_size), anti_aliasing=True)
+        return hog(
+            gray,
+            orientations=9,
+            pixels_per_cell=(16, 16),
+            cells_per_block=(2, 2),
+            feature_vector=True,
+        )
 
-        model = resnet50(pretrained=pretrained)
-        num_features = model.fc.in_features
-        model.fc = torch.nn.Linear(num_features, self.num_classes)
-        return model.to(self.device)
+    def extract(self, images: Sequence[Image.Image]) -> np.ndarray:
+        return np.stack([self._hog(im) for im in images])
 
-    def train(self, train_loader, val_loader=None, epochs: int = 10, lr: float = 1e-3):
-        """Train the deep learning model."""
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-        criterion = torch.nn.CrossEntropyLoss()
-
-        for epoch in range(epochs):
-            self.model.train()
-            total_loss = 0
-
-            for images, labels in train_loader:
-                images, labels = images.to(self.device), labels.to(self.device)
-
-                optimizer.zero_grad()
-                outputs = self.model(images)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-
-                total_loss += loss.item()
-
-            avg_loss = total_loss / len(train_loader)
-            print(f"Epoch [{epoch + 1}/{epochs}] Loss: {avg_loss:.4f}")
-
+    def fit(self, images: Sequence[Image.Image], y: np.ndarray) -> "ClassicalModel":
+        self.clf.fit(self.extract(images), y)
         return self
 
-    def predict(self, X):
-        """Make predictions on batch of images."""
-        self.model.eval()
-        with torch.no_grad():
-            if isinstance(X, list):
-                images = torch.stack([self.transform(Image.open(img_path)) for img_path in X])
-            else:
-                images = X
+    def predict(self, images: Sequence[Image.Image]) -> np.ndarray:
+        return self.clf.predict(self.extract(images))
 
-            images = images.to(self.device)
-            outputs = self.model(images)
-            _, predictions = torch.max(outputs, 1)
-
-        return predictions.cpu().numpy()
-
-    def predict_proba(self, X):
-        """Predict probabilities on batch of images."""
-        self.model.eval()
-        with torch.no_grad():
-            if isinstance(X, list):
-                images = torch.stack([self.transform(Image.open(img_path)) for img_path in X])
-            else:
-                images = X
-
-            images = images.to(self.device)
-            outputs = self.model(images)
-            probs = torch.softmax(outputs, dim=1)
-
-        return probs.cpu().numpy()
-
-    def save(self, path: str):
-        """Save model weights."""
+    def save(self, path: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        torch.save(self.model.state_dict(), path)
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
+
+# --------------------------------------------------------------------------- #
+# 3. Deep learning: frozen ResNet50 backbone + MLP head
+# --------------------------------------------------------------------------- #
+class _MLPHead(nn.Module):
+    def __init__(self, in_dim: int, num_classes: int, hidden: int = 512, p: float = 0.4):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(in_dim, hidden),
+            nn.BatchNorm1d(hidden),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p),
+            nn.Linear(hidden, num_classes),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class DeepModel:
+    """Transfer-learning classifier: frozen ResNet50 features -> MLP head."""
+
+    FEAT_DIM = 2048
+
+    def __init__(self, num_classes: int = 196, class_names: List[str] | None = None,
+                 device: str | None = None):
+        self.num_classes = num_classes
+        self.class_names = class_names
+        self.device = device or pick_device()
+        self._backbone = None
+        self._transform = None
+        self.head = _MLPHead(self.FEAT_DIM, num_classes).to(self.device)
+
+    # -- backbone (lazy: only built when needed) ---------------------------- #
+    def _ensure_backbone(self):
+        if self._backbone is not None:
+            return
+        from torchvision.models import resnet50, ResNet50_Weights
+
+        weights = ResNet50_Weights.IMAGENET1K_V2
+        net = resnet50(weights=weights)
+        net.fc = nn.Identity()
+        net.eval().to(self.device)
+        for p in net.parameters():
+            p.requires_grad = False
+        self._backbone = net
+        self._transform = weights.transforms()
+
+    @torch.no_grad()
+    def extract_features(self, images: Sequence[Image.Image], batch_size: int = 64,
+                         progress: bool = False) -> np.ndarray:
+        """Run the frozen backbone to produce (N, 2048) feature vectors."""
+        self._ensure_backbone()
+        feats = []
+        for i in range(0, len(images), batch_size):
+            batch = images[i : i + batch_size]
+            x = torch.stack([self._transform(im.convert("RGB")) for im in batch]).to(self.device)
+            f = self._backbone(x)
+            feats.append(f.cpu().numpy())
+            if progress and (i // batch_size) % 20 == 0:
+                print(f"    features {i + len(batch)}/{len(images)}", flush=True)
+        return np.concatenate(feats, axis=0)
+
+    # -- train head on cached features -------------------------------------- #
+    def fit_features(self, feats: np.ndarray, y: np.ndarray, epochs: int = 60,
+                     lr: float = 1e-3, batch_size: int = 256) -> "DeepModel":
+        X = torch.tensor(feats, dtype=torch.float32)
+        Y = torch.tensor(y, dtype=torch.long)
+        ds = torch.utils.data.TensorDataset(X, Y)
+        loader = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True)
+
+        opt = torch.optim.AdamW(self.head.parameters(), lr=lr, weight_decay=1e-4)
+        sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
+        loss_fn = nn.CrossEntropyLoss()
+
+        self.head.train()
+        for ep in range(epochs):
+            total = 0.0
+            for xb, yb in loader:
+                xb, yb = xb.to(self.device), yb.to(self.device)
+                opt.zero_grad()
+                loss = loss_fn(self.head(xb), yb)
+                loss.backward()
+                opt.step()
+                total += loss.item() * len(xb)
+            sched.step()
+            if (ep + 1) % 10 == 0 or ep == 0:
+                print(f"    epoch {ep + 1}/{epochs}  loss={total / len(ds):.4f}", flush=True)
+        return self
+
+    @torch.no_grad()
+    def predict_proba_features(self, feats: np.ndarray) -> np.ndarray:
+        self.head.eval()
+        x = torch.tensor(feats, dtype=torch.float32, device=self.device)
+        return torch.softmax(self.head(x), dim=1).cpu().numpy()
+
+    @torch.no_grad()
+    def predict_proba(self, images: Sequence[Image.Image]) -> np.ndarray:
+        return self.predict_proba_features(self.extract_features(images))
+
+    def predict(self, images: Sequence[Image.Image]) -> np.ndarray:
+        return self.predict_proba(images).argmax(axis=1)
+
+    # -- persistence (small: head + metadata only) -------------------------- #
+    def save(self, path: str) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "head_state": self.head.state_dict(),
+                "num_classes": self.num_classes,
+                "class_names": self.class_names,
+                "feat_dim": self.FEAT_DIM,
+            },
+            path,
+        )
 
     @classmethod
-    def load(cls, path: str, num_classes: int = 196):
-        """Load model weights."""
-        model = cls(num_classes=num_classes)
-        model.model.load_state_dict(torch.load(path, map_location=model.device))
+    def load(cls, path: str, device: str | None = None) -> "DeepModel":
+        ckpt = torch.load(path, map_location="cpu", weights_only=False)
+        model = cls(num_classes=ckpt["num_classes"], class_names=ckpt.get("class_names"),
+                    device=device)
+        model.head.load_state_dict(ckpt["head_state"])
+        model.head.eval()
         return model
+
+
+# --------------------------------------------------------------------------- #
+# shared metric helper
+# --------------------------------------------------------------------------- #
+def evaluate_predictions(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+    return {"accuracy": float(accuracy_score(y_true, y_pred))}
+
+
+def topk_accuracy(y_true: np.ndarray, proba: np.ndarray, k: int = 5,
+                  num_classes: int = 196) -> float:
+    return float(top_k_accuracy_score(y_true, proba, k=k, labels=list(range(num_classes))))

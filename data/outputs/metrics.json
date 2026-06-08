@@ -1,0 +1,138 @@
+{
+  "naive_majority": {
+    "accuracy": 0.008456659619450317
+  },
+  "naive_random": {
+    "accuracy": 0.005969406790200224
+  },
+  "classical": {
+    "accuracy": 0.04414873771918915
+  },
+  "deep": {
+    "accuracy": 0.5215769182937445,
+    "top5_accuracy": 0.7997761472453675
+  },
+  "head_tail": {
+    "median_train_count": 42.0,
+    "num_head_classes": 115,
+    "num_tail_classes": 81,
+    "head_accuracy": 0.5219298245614035,
+    "tail_accuracy": 0.5209917355371901,
+    "gap": 0.0009380890242133288
+  },
+  "robustness": {
+    "gaussian_noise": {
+      "accuracy": 0.466,
+      "absolute_drop": 0.055576918293744504,
+      "relative_drop_pct": 10.655555555555544
+    },
+    "motion_blur": {
+      "accuracy": 0.5336,
+      "absolute_drop": -0.012023081706255434,
+      "relative_drop_pct": -2.3051406771578433
+    },
+    "jpeg_compression": {
+      "accuracy": 0.5416,
+      "absolute_drop": -0.02002308170625544,
+      "relative_drop_pct": -3.838950882212685
+    },
+    "pixelate": {
+      "accuracy": 0.0116,
+      "absolute_drop": 0.5099769182937446,
+      "relative_drop_pct": 97.7759752026705
+    },
+    "mean_corruption_accuracy": 0.3882
+  },
+  "top_confusions": [
+    {
+      "true": "Chevrolet Express Van 2007",
+      "predicted": "GMC Savana Van 2012",
+      "count": 16
+    },
+    {
+      "true": "Dodge Sprinter Cargo Van 2009",
+      "predicted": "Mercedes-Benz Sprinter Van 2012",
+      "count": 14
+    },
+    {
+      "true": "Audi TTS Coupe 2012",
+      "predicted": "Audi TT Hatchback 2011",
+      "count": 12
+    },
+    {
+      "true": "Dodge Caliber Wagon 2012",
+      "predicted": "Dodge Caliber Wagon 2007",
+      "count": 12
+    },
+    {
+      "true": "Audi 100 Sedan 1994",
+      "predicted": "Audi V8 Sedan 1994",
+      "count": 11
+    },
+    {
+      "true": "Mercedes-Benz E-Class Sedan 2012",
+      "predicted": "Mercedes-Benz S-Class Sedan 2012",
+      "count": 11
+    },
+    {
+      "true": "Spyker C8 Convertible 2009",
+      "predicted": "Spyker C8 Coupe 2009",
+      "count": 11
+    },
+    {
+      "true": "Audi V8 Sedan 1994",
+      "predicted": "Audi 100 Sedan 1994",
+      "count": 10
+    },
+    {
+      "true": "Audi TT RS Coupe 2012",
+      "predicted": "Audi TT Hatchback 2011",
+      "count": 10
+    },
+    {
+      "true": "BMW 6 Series Convertible 2007",
+      "predicted": "BMW M6 Convertible 2010",
+      "count": 10
+    }
+  ],
+  "error_cases": [
+    {
+      "test_index": 3704,
+      "true": "Spyker C8 Coupe 2009",
+      "predicted": "Spyker C8 Convertible 2009",
+      "confidence": 0.9998188614845276
+    },
+    {
+      "test_index": 6436,
+      "true": "Chevrolet Express Cargo Van 2007",
+      "predicted": "Chevrolet Express Van 2007",
+      "confidence": 0.9995982050895691
+    },
+    {
+      "test_index": 2370,
+      "true": "Audi V8 Sedan 1994",
+      "predicted": "Audi 100 Sedan 1994",
+      "confidence": 0.9993627667427063
+    },
+    {
+      "test_index": 7292,
+      "true": "Dodge Caliber Wagon 2012",
+      "predicted": "Dodge Caliber Wagon 2007",
+      "confidence": 0.9991725087165833
+    },
+    {
+      "test_index": 3245,
+      "true": "Nissan Juke Hatchback 2012",
+      "predicted": "Acura ZDX Hatchback 2012",
+      "confidence": 0.9989435076713562
+    }
+  ],
+  "meta": {
+    "dataset": "tanganke/stanford_cars",
+    "num_classes": 196,
+    "num_train": 8144,
+    "num_test": 8041,
+    "device": "mps",
+    "runtime_sec": 206.8
+  }
+}
