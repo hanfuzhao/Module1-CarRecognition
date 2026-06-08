@@ -1,249 +1,54 @@
-# Deployment Guide - Car Type Recognition
+# Deployment
 
-This guide covers deploying the application to cloud platforms.
+The app is deployed as a **Docker Space on Hugging Face** (chosen over a 512 MB
+free tier because a torch + ResNet50 process needs more memory).
 
-## Quick Links
+- **Live app:** https://HanfuZhao781-car-recognition.hf.space
+- **Space page:** https://huggingface.co/spaces/HanfuZhao781/car-recognition
+- **Source:** https://github.com/hanfuzhao/Module1-CarRecognition
 
-- **GitHub Repo:** https://github.com/hanfuzhao/Module1-CarRecognition
-- **Recommended Deployment:** Render.com (free, easy, Python-native)
+The Space serves the same Flask app (`main.py`) via the `Dockerfile` in this
+repo. It runs **inference only** — the trained MLP head ships in `models/`, and
+the frozen ResNet50 backbone is baked into the image at build time so the first
+request is fast.
 
----
+## How it is built
+`Dockerfile` (identical to the one running on the Space):
+1. installs CPU PyTorch + the rest of `requirements.txt`,
+2. copies the app and the trained model,
+3. pre-downloads the ResNet50 ImageNet weights into the image,
+4. serves with `gunicorn` on port 7860 (HF Spaces' expected port).
 
-## Option 1: Deploy to Render.com (Recommended)
-
-### Prerequisites
-- GitHub account with repo access
-- Render.com account (free)
-
-### Steps
-
-1. **Sign up / Log in to Render.com**
-   - Visit https://render.com
-   - Sign in with GitHub
-
-2. **Create New Web Service**
-   - Click "New +" → "Web Service"
-   - Connect your GitHub account
-   - Select `hanfuzhao/Module1-CarRecognition` repo
-   - Branch: `main`
-
-3. **Configure Service**
-   - **Name:** `car-recognition` (or any name)
-   - **Runtime:** Python 3.11
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `gunicorn -w 2 -b 0.0.0.0:$PORT main:app`
-
-4. **Environment Variables**
-   - Click "Advanced"
-   - Add: `PORT` = `10000` (Render assigns this)
-   - Add: `FLASK_ENV` = `production`
-
-5. **Plan**
-   - Select "Free" plan
-   - Deploy!
-
-6. **Access Your App**
-   - Render will provide a URL like: `https://car-recognition.onrender.com`
-   - Open in browser → app is live!
-
-### Notes
-- Free tier has 15-min inactivity auto-stop (acceptable for assignment demo)
-- App will keep running for ≥7 days after submission
-- Models will be loaded if available in `/models` directory
-
----
-
-## Option 2: Deploy to Heroku (Alternative)
-
-### Prerequisites
-- Heroku account (paid or free credits)
-- Heroku CLI installed: `brew install heroku`
-
-### Steps
-
+## Reproduce / redeploy
 ```bash
-# Login to Heroku
-heroku login
+# 1. one-time: authenticate with a write token
+huggingface-cli login
 
-# Create app
-heroku create car-recognition-540
+# 2. create a Docker Space (once)
+python -c "from huggingface_hub import create_repo; \
+  create_repo('<user>/car-recognition', repo_type='space', space_sdk='docker', exist_ok=True)"
 
-# Set environment
-heroku config:set FLASK_ENV=production
+# 3. push the app (Dockerfile + main.py + scripts/ + templates/ + static/ +
+#    requirements.txt + models/ + data/raw/stanford-cars/metadata.json)
+python -c "from huggingface_hub import upload_folder; \
+  upload_folder(repo_id='<user>/car-recognition', repo_type='space', folder_path='.')"
+```
+The Space rebuilds automatically on each push; `get_space_runtime(...).stage`
+reports `RUNNING` when live.
 
-# Deploy
-git push heroku main
-
-# View logs
-heroku logs --tail
-
-# Open app
-heroku open
+## Run locally
+```bash
+pip install -r requirements.txt
+python main.py            # http://localhost:5000  (PORT env overrides)
+```
+Or with Docker:
+```bash
+docker build -t car-recognition .
+docker run -p 7860:7860 car-recognition   # http://localhost:7860
 ```
 
-### Notes
-- Free dyos were discontinued (Nov 2022)
-- Requires Heroku credits or paid account
-
----
-
-## Option 3: Docker + Any Platform (Manual)
-
-### Build Docker Image
+## Health check
 ```bash
-docker build -t car-recognition:latest .
+curl https://HanfuZhao781-car-recognition.hf.space/health
+# {"num_classes":196,"status":"ok"}
 ```
-
-### Test Locally
-```bash
-docker run -p 5000:5000 car-recognition:latest
-# Access: http://localhost:5000
-```
-
-### Deploy to Docker Hub
-```bash
-# Tag
-docker tag car-recognition:latest your-username/car-recognition:latest
-
-# Push
-docker push your-username/car-recognition:latest
-```
-
-### Deploy to Platforms Supporting Docker
-- **Railway.app** (simple, ~$5/month)
-- **DigitalOcean App Platform** (reliable)
-- **AWS ECS/Fargate** (enterprise)
-- **Google Cloud Run** (serverless, pay-per-use)
-
----
-
-## Option 4: Local Deployment (For Testing)
-
-### Using Flask Development Server
-```bash
-python main.py
-# Access: http://localhost:5000
-```
-
-### Using Docker Compose
-```bash
-docker-compose up
-# Access: http://localhost:5000
-```
-
-### Using Gunicorn (Production-like)
-```bash
-pip install gunicorn
-gunicorn -w 2 -b 0.0.0.0:5000 main:app
-```
-
----
-
-## Post-Deployment Checklist
-
-- [ ] App is accessible at public URL
-- [ ] Can upload image and get prediction
-- [ ] Top-5 predictions display correctly
-- [ ] Confidence feedback works ("I'm not sure" message appears)
-- [ ] No errors in logs
-- [ ] App stays live for ≥7 days
-
----
-
-## Troubleshooting
-
-### Models Not Found
-- **Issue:** "Could not load deep_learning model"
-- **Solution:** Run `python setup.py` locally to train, then push models to repo (if <100MB total)
-- **Alternative:** Use classical/naive models (no large files)
-
-### Port Issues
-- **Issue:** `Address already in use`
-- **Solution:** Change port in config: `flask run --port 8000`
-
-### Dependency Conflicts
-- **Issue:** Torch installation fails
-- **Solution:** Use `requirements-slim.txt` with CPU-only torch
-
-### Timeout on Deploy
-- **Issue:** Torch compilation takes >15 min
-- **Solution:** Use pre-built wheels; Render may need "Standard" plan (paid)
-
----
-
-## Monitoring & Logs
-
-### Render.com
-- Dashboard → Service → "Logs" tab
-- Check for any errors during inference
-
-### Heroku
-```bash
-heroku logs --tail
-```
-
-### Docker
-```bash
-docker logs <container-id>
-```
-
----
-
-## Scaling & Performance
-
-### Current Setup
-- 2 worker processes (Gunicorn)
-- Suitable for ~10-20 concurrent users
-- Inference time: ~50-200ms per image
-
-### For Higher Load
-- Increase workers: `gunicorn -w 4 ...`
-- Use load balancer (platform-specific)
-- Cache model in memory (already done)
-
----
-
-## Security Notes
-
-1. **Uploaded Images:** Stored in `static/uploads/` (temporary)
-   - Consider adding cleanup job for old uploads
-   - Or: Use ephemeral storage (no persistence)
-
-2. **API Rate Limiting:** Not implemented
-   - Add for production: `Flask-Limiter`
-
-3. **CORS:** Disabled (localhost only for submission)
-   - Enable if serving external clients
-
----
-
-## Estimated Timeline
-
-| Platform | Setup Time | Deploy Time | Cost |
-|----------|-----------|------------|------|
-| Render | 5 min | 2 min | Free |
-| Heroku | 10 min | 5 min | $7+/month |
-| Docker + Railway | 15 min | 3 min | ~$5/month |
-| Local (testing) | 1 min | Instant | $0 |
-
----
-
-## Getting Help
-
-- **Render Docs:** https://render.com/docs
-- **Flask Deployment:** https://flask.palletsprojects.com/deploy/
-- **Docker Guide:** https://docs.docker.com/
-
----
-
-## Summary
-
-**For the 540 assignment:**
-
-1. Deploy to Render.com (simplest)
-2. Verify app is live: https://car-recognition.onrender.com
-3. Share URL with instructor
-4. App auto-stays live ≥7 days after submission
-5. Grader can test live demo
-
-**GitHub repo already has all code + deployment configs. Easy win!** 🚀

@@ -2,7 +2,10 @@
 
 > **540 Summer · Module 1 · Project 1** — fine-grained car make/model/year
 > classification on Stanford Cars (196 classes).
-> **GitHub:** https://github.com/hanfuzhao/Module1-CarRecognition
+>
+> **🔴 Live demo:** https://HanfuZhao781-car-recognition.hf.space
+> **💻 GitHub:** https://github.com/hanfuzhao/Module1-CarRecognition
+> **📄 Report:** [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md) · **🎤 Pitch:** [PITCH.md](PITCH.md) · **🚀 Deploy:** [DEPLOYMENT.md](DEPLOYMENT.md)
 
 All metrics below are produced by `python setup.py` on the real Stanford Cars
 test set and saved to `data/outputs/metrics.json` — fully reproducible.
