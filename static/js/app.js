@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const confidence = (data.confidence * 100).toFixed(1);
 
             mainPrediction.innerHTML = `
-                <div class="prediction-label">🔍 Model Prediction</div>
+                <div class="prediction-label">Model Prediction</div>
                 <div class="prediction-item">${data.prediction}</div>
                 <div class="prediction-label">Confidence Score</div>
                 <div class="confidence-bar">
@@ -135,11 +135,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (data.feedback) {
             const fb = data.feedback;
             const feedbackClass = fb.level === 'low_confidence' ? 'low_confidence' : 'confident';
-            const icon = fb.level === 'low_confidence' ? '⚠️' : '✅';
 
             feedbackBox.className = `feedback-box ${feedbackClass}`;
             feedbackBox.innerHTML = `
-                <p>${icon} ${fb.message}</p>
+                <p>${fb.message}</p>
                 ${fb.suggestion ? `<div class="feedback-suggestion">${fb.suggestion}</div>` : ''}
             `;
         }
