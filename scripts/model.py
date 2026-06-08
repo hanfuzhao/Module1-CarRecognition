@@ -1,3 +1,9 @@
+# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
+# External code/components used:
+#   - torchvision ResNet50 + ImageNet weights:
+#     https://pytorch.org/vision/stable/models/resnet.html
+#   - scikit-learn SGDClassifier / metrics: https://scikit-learn.org/
+#   - scikit-image HOG: https://scikit-image.org/stable/auto_examples/features_detection/plot_hog.html
 """
 Model implementations for Stanford Cars fine-grained classification.
 

@@ -1,3 +1,6 @@
+# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
+# External frameworks: Flask (https://flask.palletsprojects.com/),
+# PyTorch/torchvision (https://pytorch.org/). Uses the DeepModel from scripts/model.py.
 """
 Interactive web app for car-type recognition (inference only).
 

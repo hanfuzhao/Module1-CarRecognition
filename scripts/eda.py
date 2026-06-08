@@ -1,3 +1,6 @@
+# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
+# External libraries: matplotlib (https://matplotlib.org/),
+# Hugging Face datasets (https://huggingface.co/docs/datasets/).
 """
 Exploratory data analysis for Stanford Cars.
 
@@ -23,7 +26,6 @@ import matplotlib.pyplot as plt
 from scripts import data
 
 OUTPUTS = Path("data/outputs")
-OUTPUTS.mkdir(parents=True, exist_ok=True)
 
 
 def class_distribution(train_ds):
@@ -68,6 +70,7 @@ def sample_montage(train_ds, class_names, n=8):
 
 
 def main():
+    OUTPUTS.mkdir(parents=True, exist_ok=True)
     train_ds = data.load_split("train")
     class_names = data.get_class_names(train_ds)
     counts, stats = class_distribution(train_ds)
