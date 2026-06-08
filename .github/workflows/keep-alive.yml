@@ -1,0 +1,28 @@
+name: keep-space-awake
+
+# Hugging Face free Spaces sleep after ~48h of inactivity. This pings the live
+# app every 6 hours so it stays running for the grading window.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the live app health endpoint
+        run: |
+          URL="https://HanfuZhao781-car-recognition.hf.space/health"
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$URL" || echo "000")
+            if [ "$code" = "200" ]; then
+              echo "Space is awake (HTTP $code)"
+              exit 0
+            fi
+            echo "Attempt $attempt: HTTP $code (may be cold-starting), retrying in 30s"
+            sleep 30
+          done
+          echo "Space did not respond after retries"
+          exit 1
