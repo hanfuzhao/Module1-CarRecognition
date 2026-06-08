@@ -1,3 +1,7 @@
+# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
+# Uses NumPy (https://numpy.org/). The selective-prediction / accuracy-coverage
+# formulation follows Geifman & El-Yaniv, "Selective Classification for Deep
+# Neural Networks", NeurIPS 2017 (https://arxiv.org/abs/1705.08500).
 """
 Analysis utilities for the experiments and results section.
 

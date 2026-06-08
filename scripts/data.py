@@ -1,3 +1,7 @@
+# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
+# Data source: Stanford Cars via the tanganke/stanford_cars Hugging Face mirror
+#   https://huggingface.co/datasets/tanganke/stanford_cars
+# Loaded with the Hugging Face `datasets` library: https://huggingface.co/docs/datasets/
 """
 Data access for the Stanford Cars dataset.
 

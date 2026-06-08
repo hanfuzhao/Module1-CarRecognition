@@ -1,3 +1,6 @@
+# Attribution: authored with AI assistance (Anthropic Claude, https://claude.ai).
+# External libraries: PyTorch/torchvision (https://pytorch.org/vision/stable/),
+# scikit-learn (https://scikit-learn.org/), matplotlib (https://matplotlib.org/).
 """
 End-to-end pipeline: build data artifacts, train all three models, evaluate
 on the real test set, run the robustness + confidence experiments, and write
@@ -37,8 +40,13 @@ from scripts import experiment as exp
 PROCESSED = Path("data/processed")
 OUTPUTS = Path("data/outputs")
 MODELS = Path("models")
-for d in (PROCESSED, OUTPUTS, MODELS):
-    d.mkdir(parents=True, exist_ok=True)
+
+
+def ensure_dirs():
+    """Create output directories if missing (called from main)."""
+    for d in (PROCESSED, OUTPUTS, MODELS):
+        d.mkdir(parents=True, exist_ok=True)
+
 
 NUM_CLASSES = 196
 ROBUSTNESS_CORRUPTIONS = ["gaussian_noise", "motion_blur", "jpeg_compression", "pixelate"]
@@ -220,6 +228,7 @@ def error_analysis(y_true, proba, class_names, k=5):
 # --------------------------------------------------------------------------- #
 def main():
     t_start = time.time()
+    ensure_dirs()
     results = {}
 
     print("\n[0/6] Metadata + EDA samples")
