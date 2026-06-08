@@ -1,30 +1,25 @@
 FROM python:3.11-slim
 
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+RUN useradd -m -u 1000 user
+ENV HOME=/home/user \
+    TORCH_HOME=/home/user/.cache/torch \
+    PORT=7860 \
+    KMP_DUPLICATE_LIB_OK=TRUE \
+    PYTHONUNBUFFERED=1
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /app
+COPY --chown=user requirements.txt .
+RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 
-# Copy application code
-COPY . .
+COPY --chown=user . /app
+USER user
 
-# Create necessary directories
-RUN mkdir -p static/uploads data/raw data/processed data/outputs models
+# Pre-download the frozen ResNet50 backbone into the image so the first
+# request does not pay the download cost.
+RUN python -c "from torchvision.models import resnet50, ResNet50_Weights; resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)"
 
-# Expose port
-EXPOSE 5000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5000/health')"
-
-# Run the application
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "main:app"]
+EXPOSE 7860
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:7860", "--timeout", "120", "main:app"]
