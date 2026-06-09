@@ -3,58 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 识车 - Car Type Recognition</title>
+    <title>CarID, fine-grained vehicle recognition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>Car Type Recognition</h1>
-            <p class="subtitle">Fine-grained make / model / year from a photo</p>
-        </header>
+    <header class="site-header">
+        <div class="brand">
+            <span class="brand-mark">CarID</span>
+            <span class="brand-tag">fine-grained vehicle recognition</span>
+        </div>
+        <a class="header-link" href="https://github.com/hanfuzhao/Module1-CarRecognition" target="_blank" rel="noopener">Source</a>
+    </header>
 
-        <main class="main-content">
-            <div class="upload-section">
+    <main class="wrap">
+        <section class="intro">
+            <h1>What car is this?</h1>
+            <p>Upload a photo and the model names the make, model, and year. When it is not sure, it says so instead of guessing.</p>
+        </section>
+
+        <div class="workspace">
+            <section class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">Photo</span>
+                </div>
                 <div class="upload-box" id="uploadBox">
-                    <input type="file" id="imageInput" accept="image/*" style="display:none">
-                    <p class="upload-text">Click to upload or drag &amp; drop</p>
-                    <p class="upload-hint">Supported: JPG, PNG (max 16MB)</p>
+                    <input type="file" id="imageInput" accept="image/*" hidden>
+                    <svg class="upload-glyph" viewBox="0 0 64 40" fill="none" aria-hidden="true">
+                        <path d="M3 30h58M9 30l5-13a5 5 0 0 1 4.7-3.3h26.6A5 5 0 0 1 50 17l5 13M9 30v4M55 30v4"
+                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="19" cy="30" r="4.5" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="45" cy="30" r="4.5" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <p class="upload-text">Drop a car photo here</p>
+                    <p class="upload-hint">or click to browse. JPG or PNG, up to 16 MB.</p>
                 </div>
-                <div id="imagePreview" class="image-preview" style="display:none;">
-                    <img id="previewImg" src="" alt="Preview">
-                    <button id="changeBtn" class="btn-secondary">Change Image</button>
+                <div id="imagePreview" class="image-preview" hidden>
+                    <img id="previewImg" src="" alt="Uploaded car">
+                    <button id="changeBtn" class="btn-ghost" type="button">Use a different photo</button>
                 </div>
-            </div>
+            </section>
 
-            <div id="results" class="results-section" style="display:none;">
-                <div class="result-card">
-                    <h2>Prediction Result</h2>
-                    <div class="prediction-box">
-                        <div id="mainPrediction"></div>
-                    </div>
+            <section class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">Prediction</span>
+                    <span class="panel-model">ResNet50 features + MLP</span>
+                </div>
 
-                    <h3>Top 5 Candidates</h3>
+                <div id="empty" class="empty-state">
+                    <p>Your result appears here once you add a photo.</p>
+                </div>
+
+                <div id="loading" class="loading" hidden>
+                    <span class="spinner"></span>
+                    <span>Analyzing</span>
+                </div>
+
+                <div id="results" hidden>
+                    <div id="mainPrediction"></div>
+                    <div class="section-label">Top 5 candidates</div>
                     <div id="topCandidates" class="candidates-list"></div>
-
                     <div id="feedback" class="feedback-box"></div>
                 </div>
-            </div>
 
-            <div id="loading" class="loading" style="display:none;">
-                <div class="spinner"></div>
-                <p>Analyzing image...</p>
-            </div>
+                <div id="error" class="error-box" hidden>
+                    <span id="errorMsg"></span>
+                </div>
+            </section>
+        </div>
+    </main>
 
-            <div id="error" class="error-box" style="display:none;">
-                <p id="errorMsg"></p>
-            </div>
-        </main>
-
-        <footer class="footer">
-            <p>Module 1 Project - Stanford Cars Classification</p>
-            <p>Models: Naive Baseline | Classical ML (SVM) | Deep Learning (ResNet50)</p>
-        </footer>
-    </div>
+    <footer class="site-footer">
+        <span>Stanford Cars, 196 classes</span>
+        <span>Naive baseline, classical HOG + SVM, deep ResNet50 + MLP</span>
+    </footer>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
