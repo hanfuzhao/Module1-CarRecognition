@@ -180,7 +180,7 @@ def main():
     nr = NaiveBaseline("random").fit(ytr)
     results["naive_majority"] = evaluate_predictions(yte, nb.predict(len(yte)))
     results["naive_random"] = evaluate_predictions(yte, nr.predict(len(yte)))
-    nb.save(MODELS / "naive_majority.pkl")
+    nb.save(MODELS / "naive_baseline_majority_class.pkl")
     print(f"  majority acc={results['naive_majority']['accuracy']:.4f}")
     print(f"  random   acc={results['naive_random']['accuracy']:.4f}")
 
@@ -188,7 +188,7 @@ def main():
     clf = ClassicalModel()
     Htr, _ = cached_hog_features(clf, "train")
     Hte, _ = cached_hog_features(clf, "test")
-    clf_path = MODELS / "classical_hog_svm.pkl"
+    clf_path = MODELS / "classical_hog_linear_svm.pkl"
     if clf_path.exists():
         import pickle
         print("  [cache] classical model")
@@ -211,7 +211,7 @@ def main():
         "accuracy": float((deep_pred == yte).mean()),
         "top5_accuracy": topk_accuracy(yte, proba_te, k=5, num_classes=NUM_CLASSES),
     }
-    deep.save(MODELS / "deep_resnet50_mlp.pt")
+    deep.save(MODELS / "deep_resnet50_features_mlp_head.pt")
     print(f"  deep acc={results['deep']['accuracy']:.4f}  top5={results['deep']['top5_accuracy']:.4f}")
 
     print("\n[5/6] Experiments")

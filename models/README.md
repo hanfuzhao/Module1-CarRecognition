@@ -6,9 +6,9 @@ project structure where `models/` is the directory for trained models and the
 
 | File | Model | Code |
 |------|-------|------|
-| `naive_majority.pkl` | Naive baseline (majority class) | `scripts/model.py` → `NaiveBaseline` |
-| `classical_hog_svm.pkl` | Classical: HOG features + linear SVM | `scripts/model.py` → `ClassicalModel` |
-| `deep_resnet50_mlp.pt` | Deep (deployed): frozen ResNet50 features + MLP head | `scripts/model.py` → `DeepModel` |
+| `naive_baseline_majority_class.pkl` | Naive baseline (majority class) | `scripts/model.py` → `NaiveBaseline` |
+| `classical_hog_linear_svm.pkl` | Classical: HOG features + linear SVM | `scripts/model.py` → `ClassicalModel` |
+| `deep_resnet50_features_mlp_head.pt` | Deep (deployed): frozen ResNet50 features + MLP head | `scripts/model.py` → `DeepModel` |
 
 The deep model stores only the trained MLP head (~4.6 MB); the frozen ResNet50
 backbone is fetched from torchvision at runtime. Regenerate everything with

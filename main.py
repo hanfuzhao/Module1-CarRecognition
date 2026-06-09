@@ -24,7 +24,7 @@ from flask import Flask, render_template, request, jsonify
 
 from scripts.model import DeepModel
 
-MODEL_PATH = Path("models/deep_resnet50_mlp.pt")
+MODEL_PATH = Path("models/deep_resnet50_features_mlp_head.pt")
 METADATA_PATH = Path("data/raw/stanford-cars/metadata.json")
 CONFIDENCE_THRESHOLD = 0.40  # below this we ask the user for a clearer photo
 
