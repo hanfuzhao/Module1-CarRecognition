@@ -1,4 +1,3 @@
-# Built with AI assistance (Claude). Data: Stanford Cars via HF tanganke/stanford_cars.
 """
 Get the data.
 
