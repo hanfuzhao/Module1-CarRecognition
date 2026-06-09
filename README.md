@@ -27,14 +27,17 @@ coverage**. Full write-up: [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md).
 ## Quick start
 ```bash
 pip install -r requirements.txt
-python scripts/make_dataset.py   # fetch dataset (streams from HF cache) + write metadata
+python scripts/make_dataset.py   # download the full ~16k images into data/raw/ + metadata
 python scripts/eda.py            # class-distribution stats + sample montage
 python setup.py                  # train all 3 models + run experiments -> data/outputs/
 python main.py                   # serve the web app at http://localhost:5000
 ```
-First run downloads the dataset (~4.5 GB, cached). Training is ~3.5 min on
-Apple-Silicon MPS afterwards (deep + HOG features are cached to
-`data/processed/`).
+`make_dataset.py` writes all 16,185 images to `data/raw/stanford-cars/` (~2 GB,
+git-ignored); a one-image-per-class sample is committed under `data/raw/sample/`
+so the data is visible in the repo without the bulk. Training is ~3.5 min on
+Apple-Silicon MPS (features are cached to `data/processed/`). To just try the
+deployed app without retraining, the trained model is already in `models/` — run
+`python main.py` directly.
 
 ## The three required models
 1. **Naive baseline** — majority-class / random (`NaiveBaseline`).
@@ -64,7 +67,9 @@ no training in the app.
 ├── templates/ , static/        # web UI
 ├── models/                     # trained models (naive, classical, deep head)
 ├── data/
-│   ├── raw/stanford-cars/      # metadata.json (images stream from HF cache)
+│   ├── raw/
+│   │   ├── stanford-cars/      # full 16k images written here by make_dataset.py (gitignored) + metadata.json
+│   │   └── sample/             # one image per class, committed for visibility
 │   ├── processed/              # cached features (gitignored)
 │   └── outputs/                # metrics.json + plots
 └── notebooks/                  # exploration (not graded)
