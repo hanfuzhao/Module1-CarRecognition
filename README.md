@@ -62,7 +62,7 @@ no training in the app.
 │   ├── data.py                 # HF dataset access + metadata
 │   ├── make_dataset.py         # fetch dataset, write metadata.json
 │   ├── eda.py                  # class distribution + samples
-│   ├── model.py                # NaiveBaseline / ClassicalModel / DeepModel
+│   ├── model.py                # all model code: NaiveBaseline / ClassicalModel / DeepModel + feature extraction
 │   └── experiment.py           # confidence gating, head/tail, robustness helpers
 ├── templates/ , static/        # web UI
 ├── models/                     # trained models (naive, classical, deep head)

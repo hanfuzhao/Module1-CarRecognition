@@ -34,8 +34,8 @@ from scripts.model import (
     topk_accuracy,
 )
 from scripts import experiment as exp
-from scripts.build_features import deep_features as cached_deep_features
-from scripts.build_features import hog_features as cached_hog_features
+from scripts.model import deep_features as cached_deep_features
+from scripts.model import hog_features as cached_hog_features
 
 PROCESSED = Path("data/processed")
 OUTPUTS = Path("data/outputs")
