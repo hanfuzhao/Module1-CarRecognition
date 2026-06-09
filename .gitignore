@@ -1,4 +1,4 @@
-# Data — keep metadata + a small sample + result figures; drop the bulk
+# Data: keep metadata, a small sample, and result figures; drop the bulk
 data/processed/*
 !data/processed/.gitkeep
 data/raw/*
@@ -10,7 +10,7 @@ data/raw/stanford-cars/*
 data/outputs/*.log
 !data/outputs/.gitkeep
 
-# Models — commit the small trained artifacts so the app runs on deploy
+# Models: commit the small trained artifacts so the app runs on deploy
 # (deep head ~4.6MB, classical ~1.4MB; the ResNet50 backbone is fetched at runtime)
 
 # Python
