@@ -6,9 +6,16 @@
 > **Live demo:** https://HanfuZhao781-car-recognition.hf.space
 > **GitHub:** https://github.com/hanfuzhao/Module1-CarRecognition
 > **Report:** [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md) · **Pitch:** [PITCH.md](PITCH.md)
+>
+> **Graders:** [GRADING.md](GRADING.md) maps every rubric item to its exact location in the repo.
 
 All metrics below are produced by `python setup.py` on the real Stanford Cars
 test set and saved to `data/outputs/metrics.json` — fully reproducible.
+
+**Originality:** an existing dataset (Stanford Cars) approached for *insight*
+rather than leaderboard accuracy — a deployable frozen-backbone classifier
+profiled for **corruption robustness** (the pixelation-collapse finding) and
+made trustworthy via **confidence-gated abstention**, rather than chasing SOTA.
 
 ## Results (real, test set = 8,041 images)
 
