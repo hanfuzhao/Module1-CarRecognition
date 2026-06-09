@@ -4,67 +4,55 @@ document.addEventListener('DOMContentLoaded', function () {
     const imagePreview = document.getElementById('imagePreview');
     const previewImg = document.getElementById('previewImg');
     const changeBtn = document.getElementById('changeBtn');
+    const emptyState = document.getElementById('empty');
     const resultsDiv = document.getElementById('results');
     const loadingDiv = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
     const errorMsg = document.getElementById('errorMsg');
 
-    // Upload box click
+    const show = (el) => { el.hidden = false; };
+    const hide = (el) => { el.hidden = true; };
+
     uploadBox.addEventListener('click', () => imageInput.click());
 
-    // Drag and drop
     uploadBox.addEventListener('dragover', (e) => {
         e.preventDefault();
         uploadBox.classList.add('drag-over');
     });
-
-    uploadBox.addEventListener('dragleave', () => {
-        uploadBox.classList.remove('drag-over');
-    });
-
+    uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('drag-over'));
     uploadBox.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadBox.classList.remove('drag-over');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleImageSelect(files[0]);
-        }
+        if (e.dataTransfer.files.length) handleImageSelect(e.dataTransfer.files[0]);
     });
 
-    // File input change
     imageInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            handleImageSelect(e.target.files[0]);
-        }
+        if (e.target.files.length) handleImageSelect(e.target.files[0]);
     });
 
-    // Change image button
     changeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         imageInput.value = '';
-        imagePreview.style.display = 'none';
-        uploadBox.style.display = 'block';
-        resultsDiv.style.display = 'none';
-        errorDiv.style.display = 'none';
+        hide(imagePreview);
+        show(uploadBox);
+        hide(resultsDiv);
+        hide(errorDiv);
+        show(emptyState);
     });
 
     function handleImageSelect(file) {
         if (!file.type.startsWith('image/')) {
-            showError('Please select a valid image file');
+            showError('Please choose an image file.');
             return;
         }
-
-        // Show preview
         const reader = new FileReader();
         reader.onload = (e) => {
             previewImg.src = e.target.result;
-            uploadBox.style.display = 'none';
-            imagePreview.style.display = 'block';
-            resultsDiv.style.display = 'none';
-            errorDiv.style.display = 'none';
-
-            // Auto-submit for prediction
-            setTimeout(() => predictImage(file), 300);
+            hide(uploadBox);
+            show(imagePreview);
+            hide(resultsDiv);
+            hide(errorDiv);
+            setTimeout(() => predictImage(file), 250);
         };
         reader.readAsDataURL(file);
     }
@@ -73,27 +61,21 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData();
         formData.append('image', file);
 
-        loadingDiv.style.display = 'block';
-        resultsDiv.style.display = 'none';
-        errorDiv.style.display = 'none';
+        hide(emptyState);
+        hide(resultsDiv);
+        hide(errorDiv);
+        show(loadingDiv);
 
-        fetch('/predict', {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.json())
-            .then(data => {
-                loadingDiv.style.display = 'none';
-
-                if (data.error) {
-                    showError(data.error);
-                } else {
-                    displayResults(data);
-                }
+        fetch('/predict', { method: 'POST', body: formData })
+            .then((r) => r.json())
+            .then((data) => {
+                hide(loadingDiv);
+                if (data.error) showError(data.error);
+                else displayResults(data);
             })
-            .catch(error => {
-                loadingDiv.style.display = 'none';
-                showError('Network error: ' + error.message);
+            .catch((err) => {
+                hide(loadingDiv);
+                showError('Network error: ' + err.message);
             });
     }
 
@@ -102,54 +84,47 @@ document.addEventListener('DOMContentLoaded', function () {
         const topCandidates = document.getElementById('topCandidates');
         const feedbackBox = document.getElementById('feedback');
 
-        // Main prediction
         if (data.prediction) {
-            const confidence = (data.confidence * 100).toFixed(1);
+            const conf = (data.confidence * 100).toFixed(1);
+            mainPrediction.innerHTML =
+                '<div class="pred-label">Most likely</div>' +
+                '<div class="pred-name">' + data.prediction + '</div>' +
+                '<div class="pred-label">Confidence</div>' +
+                '<div class="pred-conf-row">' +
+                    '<div class="conf-track"><div class="conf-fill" style="width:' + conf + '%"></div></div>' +
+                    '<div class="conf-num">' + conf + '%</div>' +
+                '</div>';
 
-            mainPrediction.innerHTML = `
-                <div class="prediction-label">Model Prediction</div>
-                <div class="prediction-item">${data.prediction}</div>
-                <div class="prediction-label">Confidence Score</div>
-                <div class="confidence-bar">
-                    <div class="confidence-fill" style="width: ${confidence}%">
-                        ${confidence}%
-                    </div>
-                </div>
-                <div class="prediction-label">Model: ResNet50 features + MLP head</div>
-            `;
-
-            // Top 5 candidates
-            topCandidates.innerHTML = '';
-            (data.top_k || []).forEach((item, index) => {
+            const top = data.top_k || [];
+            const peak = top.length ? top[0].confidence : 1;
+            topCandidates.innerHTML = top.map((item, i) => {
                 const pct = (item.confidence * 100).toFixed(1);
-                topCandidates.innerHTML += `
-                    <div class="candidate-item">
-                        <div class="candidate-name">#${index + 1}. ${item.label}</div>
-                        <div class="candidate-score">${pct}%</div>
-                    </div>
-                `;
-            });
+                const rel = peak > 0 ? Math.max(3, (item.confidence / peak) * 100) : 0;
+                return '<div class="candidate">' +
+                    '<div class="cand-rank">' + (i + 1) + '</div>' +
+                    '<div class="cand-name">' + item.label + '</div>' +
+                    '<div class="cand-bar"><span style="width:' + rel + '%"></span></div>' +
+                    '<div class="cand-pct">' + pct + '%</div>' +
+                '</div>';
+            }).join('');
         }
 
-        // Feedback
         if (data.feedback) {
             const fb = data.feedback;
-            const feedbackClass = fb.level === 'low_confidence' ? 'low_confidence' : 'confident';
-
-            feedbackBox.className = `feedback-box ${feedbackClass}`;
-            feedbackBox.innerHTML = `
-                <p>${fb.message}</p>
-                ${fb.suggestion ? `<div class="feedback-suggestion">${fb.suggestion}</div>` : ''}
-            `;
+            const cls = fb.level === 'low_confidence' ? 'low_confidence' : 'confident';
+            feedbackBox.className = 'feedback-box ' + cls;
+            feedbackBox.innerHTML = '<div>' + fb.message + '</div>' +
+                (fb.suggestion ? '<div class="feedback-suggestion">' + fb.suggestion + '</div>' : '');
         }
 
-        resultsDiv.style.display = 'block';
-        errorDiv.style.display = 'none';
+        show(resultsDiv);
+        hide(errorDiv);
     }
 
     function showError(message) {
         errorMsg.textContent = message;
-        errorDiv.style.display = 'block';
-        resultsDiv.style.display = 'none';
+        hide(emptyState);
+        show(errorDiv);
+        hide(resultsDiv);
     }
 });
