@@ -1,10 +1,12 @@
-# Data — keep metadata + result figures, drop big caches
+# Data — keep metadata + a small sample + result figures; drop the bulk
 data/processed/*
 !data/processed/.gitkeep
 data/raw/*
 !data/raw/stanford-cars
 data/raw/stanford-cars/*
 !data/raw/stanford-cars/metadata.json
+!data/raw/sample
+!data/raw/sample/**
 data/outputs/*.log
 !data/outputs/.gitkeep
 

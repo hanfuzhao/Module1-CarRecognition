@@ -9,9 +9,13 @@ Run:  python scripts/eda.py
 """
 
 import os
+import sys
 
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+# allow running both as `python scripts/eda.py` and `python -m scripts.eda`
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pathlib import Path
 
