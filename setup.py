@@ -34,6 +34,8 @@ from scripts.model import (
     topk_accuracy,
 )
 from scripts import experiment as exp
+from scripts.build_features import deep_features as cached_deep_features
+from scripts.build_features import hog_features as cached_hog_features
 
 PROCESSED = Path("data/processed")
 OUTPUTS = Path("data/outputs")
@@ -49,64 +51,6 @@ def ensure_dirs():
 NUM_CLASSES = 196
 ROBUSTNESS_CORRUPTIONS = ["gaussian_noise", "motion_blur", "jpeg_compression", "pixelate"]
 ROBUSTNESS_SAMPLE = 2500  # images per corruption split (kept fast; noted in report)
-
-
-def cached_deep_features(deep: DeepModel, split_name: str, limit: int | None = None):
-    """Extract (and cache) ResNet50 features + labels for a split.
-
-    `limit` caps the number of images processed; used to keep the robustness
-    sweep over corruption splits fast (a 2.5k-image sample per corruption is a
-    statistically adequate accuracy estimate and is noted in the report).
-    """
-    tag = split_name if limit is None else f"{split_name}_s{limit}"
-    fpath = PROCESSED / f"feat_{tag}.npy"
-    ypath = PROCESSED / f"label_{tag}.npy"
-    if fpath.exists() and ypath.exists():
-        print(f"  [cache] {tag} features")
-        return np.load(fpath), np.load(ypath)
-
-    ds = data.load_split(split_name)
-    total = ds.num_rows if limit is None else min(limit, ds.num_rows)
-    feats, ys = [], []
-    t0 = time.time()
-    done = 0
-    for images, labels in data.iter_batches(ds, batch_size=256):
-        if limit is not None and done >= limit:
-            break
-        feats.append(deep.extract_features(images, batch_size=64))
-        ys.append(labels)
-        done += len(labels)
-        print(f"  [{tag}] {min(done, total)}/{total}  ({time.time() - t0:.0f}s)", flush=True)
-    feats = np.concatenate(feats).astype(np.float32)[:total]
-    ys = np.concatenate(ys)[:total]
-    np.save(fpath, feats)
-    np.save(ypath, ys)
-    return feats, ys
-
-
-def cached_hog_features(model: ClassicalModel, split_name: str):
-    """Extract (and cache) HOG features + labels for a split."""
-    fpath = PROCESSED / f"hog_{split_name}.npy"
-    ypath = PROCESSED / f"label_{split_name}.npy"
-    if fpath.exists():
-        print(f"  [cache] {split_name} HOG")
-        return np.load(fpath), np.load(ypath)
-
-    ds = data.load_split(split_name)
-    feats, ys = [], []
-    t0 = time.time()
-    done = 0
-    for images, labels in data.iter_batches(ds, batch_size=256):
-        feats.append(model.extract(images))
-        ys.append(labels)
-        done += len(labels)
-        print(f"  [HOG {split_name}] {done}/{ds.num_rows}  ({time.time() - t0:.0f}s)", flush=True)
-    feats = np.concatenate(feats).astype(np.float32)
-    ys = np.concatenate(ys)
-    np.save(fpath, feats)
-    if not ypath.exists():
-        np.save(ypath, ys)
-    return feats, ys
 
 
 def plot_model_comparison(results: dict):
