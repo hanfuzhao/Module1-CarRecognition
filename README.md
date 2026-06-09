@@ -5,7 +5,7 @@
 >
 > **Live demo:** https://HanfuZhao781-car-recognition.hf.space
 > **GitHub:** https://github.com/hanfuzhao/Module1-CarRecognition
-> **Report:** [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md) · **Pitch:** [PITCH.md](PITCH.md) · **Deploy:** [DEPLOYMENT.md](DEPLOYMENT.md)
+> **Report:** [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md) · **Pitch:** [PITCH.md](PITCH.md)
 
 All metrics below are produced by `python setup.py` on the real Stanford Cars
 test set and saved to `data/outputs/metrics.json` — fully reproducible.
@@ -68,6 +68,16 @@ no training in the app.
 │   ├── processed/              # cached features (gitignored)
 │   └── outputs/                # metrics.json + plots
 └── notebooks/                  # exploration (not graded)
+```
+
+## Deployment
+The app is deployed as a Docker Space on Hugging Face (live URL above). It runs
+inference only: the trained head ships in `models/`, the ResNet50 backbone is
+fetched at build time, and a scheduled GitHub Action pings `/health` so the
+Space stays awake. To run the container yourself:
+```bash
+docker build -t car-recognition .
+docker run -p 7860:7860 car-recognition   # http://localhost:7860
 ```
 
 ## Git workflow
