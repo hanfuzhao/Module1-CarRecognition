@@ -30,6 +30,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.files.length) handleImageSelect(e.target.files[0]);
     });
 
+    document.querySelectorAll('.sample').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            fetch(btn.dataset.src)
+                .then((r) => r.blob())
+                .then((blob) => handleImageSelect(new File([blob], 'sample.jpg', { type: blob.type || 'image/jpeg' })))
+                .catch(() => showError('Could not load the sample image.'));
+        });
+    });
+
     changeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         imageInput.value = '';

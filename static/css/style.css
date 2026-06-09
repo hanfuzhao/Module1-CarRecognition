@@ -164,6 +164,27 @@ body {
 }
 .btn-ghost:hover { color: var(--ink); border-color: var(--ink); }
 
+/* Samples */
+.samples { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--hairline); }
+.samples-label {
+    display: block;
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--faint); font-weight: 600; margin-bottom: 10px;
+}
+.samples-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.sample {
+    padding: 0; border: 1px solid var(--hairline); border-radius: 8px;
+    background: none; cursor: pointer; overflow: hidden; aspect-ratio: 4 / 3;
+    transition: border-color .15s, transform .15s;
+}
+.sample img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sample:hover { border-color: var(--accent); transform: translateY(-2px); }
+.samples-note { display: block; font-size: 11.5px; color: var(--faint); margin-top: 9px; }
+
+@media (max-width: 760px) {
+    .samples-row { grid-template-columns: repeat(3, 1fr); }
+}
+
 /* Empty / loading */
 .empty-state {
     flex: 1;

@@ -44,6 +44,19 @@
                     <img id="previewImg" src="" alt="Uploaded car">
                     <button id="changeBtn" class="btn-ghost" type="button">Use a different photo</button>
                 </div>
+
+                <div class="samples">
+                    <span class="samples-label">Or try a test photo</span>
+                    <div class="samples-row">
+                        <button class="sample" type="button" data-src="{{ url_for('static', filename='samples/4_Ferrari_FF_Coupe_2012.jpg') }}"><img src="{{ url_for('static', filename='samples/4_Ferrari_FF_Coupe_2012.jpg') }}" alt="Ferrari"></button>
+                        <button class="sample" type="button" data-src="{{ url_for('static', filename='samples/6_Lamborghini_Diablo_Coupe_2001.jpg') }}"><img src="{{ url_for('static', filename='samples/6_Lamborghini_Diablo_Coupe_2001.jpg') }}" alt="Lamborghini"></button>
+                        <button class="sample" type="button" data-src="{{ url_for('static', filename='samples/2_AM_General_Hummer_SUV_2000.jpg') }}"><img src="{{ url_for('static', filename='samples/2_AM_General_Hummer_SUV_2000.jpg') }}" alt="Hummer"></button>
+                        <button class="sample" type="button" data-src="{{ url_for('static', filename='samples/5_GMC_Acadia_SUV_2012.jpg') }}"><img src="{{ url_for('static', filename='samples/5_GMC_Acadia_SUV_2012.jpg') }}" alt="GMC Acadia"></button>
+                        <button class="sample" type="button" data-src="{{ url_for('static', filename='samples/3_Dodge_Caravan_Minivan_1997.jpg') }}"><img src="{{ url_for('static', filename='samples/3_Dodge_Caravan_Minivan_1997.jpg') }}" alt="Dodge Caravan"></button>
+                        <button class="sample" type="button" data-src="{{ url_for('static', filename='samples/1_Plymouth_Neon_Coupe_1999.jpg') }}"><img src="{{ url_for('static', filename='samples/1_Plymouth_Neon_Coupe_1999.jpg') }}" alt="Plymouth Neon"></button>
+                    </div>
+                    <span class="samples-note">Held-out test-set images the model did not train on.</span>
+                </div>
             </section>
 
             <section class="panel">
