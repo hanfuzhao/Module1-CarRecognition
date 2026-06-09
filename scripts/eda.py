@@ -1,4 +1,3 @@
-# Built with AI assistance (Claude). Uses matplotlib and Hugging Face datasets.
 """
 Exploratory data analysis for Stanford Cars.
 

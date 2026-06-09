@@ -1,5 +1,5 @@
-# Built with AI assistance (Claude). Selective-prediction idea follows Geifman &
-# El-Yaniv, "Selective Classification for Deep Neural Networks", NeurIPS 2017.
+# Selective-prediction idea follows Geifman & El-Yaniv,
+# "Selective Classification for Deep Neural Networks", NeurIPS 2017.
 """
 Analysis utilities for the experiments and results section.
 
