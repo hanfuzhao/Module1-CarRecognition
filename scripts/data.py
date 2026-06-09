@@ -14,7 +14,7 @@ All splits expose two columns: `image` (PIL.Image) and `label` (int 0-195).
 
 import json
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 from datasets import load_dataset
@@ -42,13 +42,6 @@ def get_class_names(split=None) -> List[str]:
     """Return the 196 human-readable class names (e.g. 'Acura RL Sedan 2012')."""
     ds = split if split is not None else load_split("train")
     return list(ds.features["label"].names)
-
-
-def split_to_arrays(ds) -> Tuple[list, np.ndarray]:
-    """Convert a split into (list_of_PIL_images, label_array). Small splits only."""
-    images = [img.convert("RGB") for img in ds["image"]]
-    labels = np.array(ds["label"], dtype=np.int64)
-    return images, labels
 
 
 def iter_batches(ds, batch_size: int = 256):
@@ -82,13 +75,3 @@ def write_metadata(class_names: List[str], n_train: int, n_test: int) -> None:
     }
     with open(METADATA_PATH, "w") as f:
         json.dump(payload, f, indent=2)
-
-
-def load_metadata() -> dict:
-    """Load persisted metadata, or raise if make_dataset has not been run."""
-    if not METADATA_PATH.exists():
-        raise FileNotFoundError(
-            f"{METADATA_PATH} not found. Run `python scripts/make_dataset.py` first."
-        )
-    with open(METADATA_PATH) as f:
-        return json.load(f)

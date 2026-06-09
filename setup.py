@@ -196,10 +196,10 @@ def main():
             clf = pickle.load(f)
     else:
         t0 = time.time()
-        clf.clf.fit(Htr, ytr)
+        clf.fit(Htr, ytr)
         print(f"  fit done in {time.time() - t0:.0f}s")
         clf.save(clf_path)
-    classical_pred = clf.clf.predict(Hte)
+    classical_pred = clf.predict(Hte)
     results["classical"] = evaluate_predictions(yte, classical_pred)
     print(f"  classical acc={results['classical']['accuracy']:.4f}")
 

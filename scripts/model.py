@@ -91,14 +91,17 @@ class ClassicalModel:
         )
 
     def extract(self, images: Sequence[Image.Image]) -> np.ndarray:
+        """HOG feature vectors for a list of images."""
         return np.stack([self._hog(im) for im in images])
 
-    def fit(self, images: Sequence[Image.Image], y: np.ndarray) -> "ClassicalModel":
-        self.clf.fit(self.extract(images), y)
+    def fit(self, features: np.ndarray, y: np.ndarray) -> "ClassicalModel":
+        """Fit the linear SVM on precomputed HOG features."""
+        self.clf.fit(features, y)
         return self
 
-    def predict(self, images: Sequence[Image.Image]) -> np.ndarray:
-        return self.clf.predict(self.extract(images))
+    def predict(self, features: np.ndarray) -> np.ndarray:
+        """Predict labels from precomputed HOG features."""
+        return self.clf.predict(features)
 
     def save(self, path: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -198,9 +201,6 @@ class DeepModel:
     @torch.no_grad()
     def predict_proba(self, images: Sequence[Image.Image]) -> np.ndarray:
         return self.predict_proba_features(self.extract_features(images))
-
-    def predict(self, images: Sequence[Image.Image]) -> np.ndarray:
-        return self.predict_proba(images).argmax(axis=1)
 
     def save(self, path: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
