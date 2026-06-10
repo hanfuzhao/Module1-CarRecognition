@@ -5,9 +5,9 @@
 >
 > **Live demo:** https://HanfuZhao781-car-recognition.hf.space
 > **GitHub:** https://github.com/hanfuzhao/Module1-CarRecognition
-> **Report:** [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md), **Pitch:** [PITCH.md](PITCH.md)
->
-> **Graders:** [GRADING.md](GRADING.md) maps every rubric item to its exact location in the repo.
+
+This repository holds the code, trained models, and deployed app. The written
+report, pitch, and slides are submitted separately.
 
 All metrics below are produced by `python setup.py` on the real Stanford Cars
 test set and saved to `data/outputs/metrics.json`, fully reproducible.
@@ -29,7 +29,7 @@ made trustworthy via **confidence-gated abstention**, rather than chasing SOTA.
 **Experiment (corruption robustness):** robust to JPEG (+2pt) and motion blur
 (+1pt), -5.6pt under noise, and **collapses under pixelation (-51pt)**.
 **Confidence gating** lifts accuracy to **79% @ 43% coverage** and **90% @ 19%
-coverage**. Full write-up: [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md).
+coverage**.
 
 ## Quick start
 ```bash
@@ -63,9 +63,6 @@ clearer photo, mitigating the pixelation/blur failure mode). Inference only, no 
 main.py                 Flask inference app (deployed model)
 setup.py                trains all 3 models and runs experiments
 requirements.txt
-TECHNICAL_REPORT.md     full write-up (real results)
-GRADING.md              rubric to location map for graders
-PITCH.md                5-minute pitch script
 Makefile                install / data / train / app targets
 Dockerfile              container for the deployed app
 scripts/
