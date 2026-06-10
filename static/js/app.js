@@ -4,11 +4,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const imagePreview = document.getElementById('imagePreview');
     const previewImg = document.getElementById('previewImg');
     const changeBtn = document.getElementById('changeBtn');
+    const modelSelect = document.getElementById('modelSelect');
     const emptyState = document.getElementById('empty');
     const resultsDiv = document.getElementById('results');
     const loadingDiv = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
     const errorMsg = document.getElementById('errorMsg');
+    const top5Label = document.getElementById('top5Label');
+    const topCandidates = document.getElementById('topCandidates');
+
+    let lastFile = null;
 
     const show = (el) => { el.hidden = false; };
     const hide = (el) => { el.hidden = true; };
@@ -39,9 +44,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // Re-run prediction with the same photo when the model changes.
+    modelSelect.addEventListener('change', () => {
+        if (lastFile) predictImage(lastFile);
+    });
+
     changeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         imageInput.value = '';
+        lastFile = null;
         hide(imagePreview);
         show(uploadBox);
         hide(resultsDiv);
@@ -54,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showError('Please choose an image file.');
             return;
         }
+        lastFile = file;
         const reader = new FileReader();
         reader.onload = (e) => {
             previewImg.src = e.target.result;
@@ -69,6 +81,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function predictImage(file) {
         const formData = new FormData();
         formData.append('image', file);
+        formData.append('model', modelSelect.value);
 
         hide(emptyState);
         hide(resultsDiv);
@@ -90,32 +103,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function displayResults(data) {
         const mainPrediction = document.getElementById('mainPrediction');
-        const topCandidates = document.getElementById('topCandidates');
         const feedbackBox = document.getElementById('feedback');
 
-        if (data.prediction) {
+        const acc = (data.model_accuracy * 100).toFixed(1);
+        let html =
+            '<div class="model-meta">' +
+                '<span class="model-name">' + data.model_label + '</span>' +
+                '<span class="model-acc">test accuracy ' + acc + '%</span>' +
+            '</div>' +
+            '<div class="pred-label">' + (data.confidence === null ? 'Prediction' : 'Most likely') + '</div>' +
+            '<div class="pred-name">' + data.prediction + '</div>';
+
+        if (data.confidence !== null && data.confidence !== undefined) {
             const conf = (data.confidence * 100).toFixed(1);
-            mainPrediction.innerHTML =
-                '<div class="pred-label">Most likely</div>' +
-                '<div class="pred-name">' + data.prediction + '</div>' +
+            html +=
                 '<div class="pred-label">Confidence</div>' +
                 '<div class="pred-conf-row">' +
                     '<div class="conf-track"><div class="conf-fill" style="width:' + conf + '%"></div></div>' +
                     '<div class="conf-num">' + conf + '%</div>' +
                 '</div>';
+        }
+        if (data.note) html += '<div class="pred-note">' + data.note + '</div>';
+        mainPrediction.innerHTML = html;
 
-            const top = data.top_k || [];
-            const peak = top.length ? top[0].confidence : 1;
+        const top = data.top_k || [];
+        if (top.length) {
+            show(top5Label);
+            show(topCandidates);
             topCandidates.innerHTML = top.map((item, i) => {
-                const pct = (item.confidence * 100).toFixed(1);
-                const rel = peak > 0 ? Math.max(3, (item.confidence / peak) * 100) : 0;
                 return '<div class="candidate">' +
                     '<div class="cand-rank">' + (i + 1) + '</div>' +
                     '<div class="cand-name">' + item.label + '</div>' +
-                    '<div class="cand-bar"><span style="width:' + rel + '%"></span></div>' +
-                    '<div class="cand-pct">' + pct + '%</div>' +
+                    '<div class="cand-bar"><span style="width:' + item.bar + '%"></span></div>' +
+                    '<div class="cand-pct">' + (item.pct ? item.pct : '') + '</div>' +
                 '</div>';
             }).join('');
+        } else {
+            hide(top5Label);
+            hide(topCandidates);
+            topCandidates.innerHTML = '';
         }
 
         if (data.feedback) {
