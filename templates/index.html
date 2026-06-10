@@ -62,7 +62,11 @@
             <section class="panel">
                 <div class="panel-head">
                     <span class="panel-title">Prediction</span>
-                    <span class="panel-model">ResNet50 features + MLP</span>
+                    <select id="modelSelect" class="model-select" aria-label="Choose model">
+                        <option value="deep">Deep: ResNet50 + MLP</option>
+                        <option value="classical">Classical: HOG + SVM</option>
+                        <option value="naive">Naive: majority class</option>
+                    </select>
                 </div>
 
                 <div id="empty" class="empty-state">
@@ -76,7 +80,7 @@
 
                 <div id="results" hidden>
                     <div id="mainPrediction"></div>
-                    <div class="section-label">Top 5 candidates</div>
+                    <div id="top5Label" class="section-label">Top 5 candidates</div>
                     <div id="topCandidates" class="candidates-list"></div>
                     <div id="feedback" class="feedback-box"></div>
                 </div>

@@ -108,6 +108,15 @@ class ClassicalModel:
         """Predict labels from precomputed HOG features."""
         return self.clf.predict(features)
 
+    def predict_proba_features(self, features: np.ndarray) -> np.ndarray:
+        """Pseudo-probabilities from the SVM decision margins (softmax over
+        one-vs-rest scores). The linear SVM is not calibrated, so these are
+        relative confidences, used only for the app's top-5 display."""
+        scores = np.asarray(self.clf.decision_function(features), dtype=np.float64)
+        scores = scores - scores.max(axis=1, keepdims=True)
+        e = np.exp(scores)
+        return e / e.sum(axis=1, keepdims=True)
+
     def save(self, path: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
