@@ -13,6 +13,13 @@ data/outputs/*.log
 # Models: commit the small trained artifacts so the app runs on deploy
 # (deep head ~4.6MB, classical ~1.4MB; the ResNet50 backbone is fetched at runtime)
 
+# Deliverables kept locally only (submitted separately, not pushed to GitHub)
+TECHNICAL_REPORT.md
+TECHNICAL_REPORT.pdf
+PITCH.md
+PITCH.pptx
+GRADING.md
+
 # Python
 __pycache__/
 *.py[cod]
