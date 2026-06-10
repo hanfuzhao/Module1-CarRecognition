@@ -101,7 +101,7 @@ families.
 | Backbone | ResNet50 IMAGENET1K_V2, **frozen** | Strong general features; freezing keeps the deployable artifact tiny (head only) and training fast/reproducible |
 | MLP head | 2048, 512 (BN, ReLU, dropout 0.4), 196 | Small non-linear head adds capacity over a linear probe without overfitting 8k images |
 | Optimizer | AdamW, lr 1e-3, wd 1e-4, cosine schedule, 60 epochs | Standard, stable for a small head on fixed features |
-| Classical SVM | linear SVM via SGD (hinge), α=1e-4 | LibLinear's dual solver did not converge in acceptable time on 196-way OvR; SGD gives the same linear-SVM decision rule in seconds |
+| Classical SVM | linear SVM via SGD (hinge), alpha=1e-4 | LibLinear's dual solver did not converge in acceptable time on 196-way OvR; SGD gives the same linear-SVM decision rule in seconds |
 | Image size | 224 (deep) / 128 (HOG) | Backbone-native / speed |
 
 ### 5.3 Models evaluated (and why each)
@@ -187,7 +187,7 @@ users from confident-but-wrong answers?**
  accuracy vs coverage (selective prediction).
 
 ### 8.3 Results, robustness (`data/outputs/robustness.png`)
-| Test condition | Top-1 | Δ vs clean |
+| Test condition | Top-1 | Change vs clean |
 |---|---|---|
 | Clean | 52.2% |, |
 | JPEG compression | 54.2% | **+2.0** |
