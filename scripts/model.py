@@ -47,10 +47,13 @@ class NaiveBaseline:
         self.strategy = strategy
         self.most_common_class = None
         self.num_classes = None
+        self.priors = None  # training class distribution P(class)
 
     def fit(self, y_train: np.ndarray) -> "NaiveBaseline":
         self.num_classes = int(np.max(y_train)) + 1
-        self.most_common_class = int(np.bincount(y_train).argmax())
+        counts = np.bincount(y_train, minlength=self.num_classes).astype(np.float64)
+        self.priors = counts / counts.sum()
+        self.most_common_class = int(counts.argmax())
         return self
 
     def predict(self, n: int) -> np.ndarray:
