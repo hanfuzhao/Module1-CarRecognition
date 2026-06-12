@@ -54,9 +54,15 @@ deployed app without retraining, the trained model is already in `models/`, run
  torchvision at runtime, so the committed model artifact is only ~4.6 MB.
 
 ## Interactive app
-`main.py` is a Flask app: upload a car photo, top-5 predictions with
-confidence bars + confidence-aware feedback (below 40% confidence it asks for a
-clearer photo, mitigating the pixelation/blur failure mode). Inference only, no training in the app.
+`main.py` is a Flask app (inference only, no training). Features:
+
+- Upload a car photo, or click one of six built-in held-out test-set samples.
+- A model dropdown runs the same photo through any of the three models (naive,
+  classical, deep) and shows each model's test accuracy, so their performance
+  gap is visible side by side.
+- Output is a top-1 prediction with a confidence bar plus a top-5 list.
+- Confidence-aware feedback: below 40% confidence the app abstains and asks for a
+  clearer photo, mitigating the pixelation/blur failure mode.
 
 ## Repository layout
 ```
