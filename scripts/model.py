@@ -1,4 +1,4 @@
-# Built with AI assistance (Claude). Uses torchvision ResNet50, scikit-learn, scikit-image.
+# Built with AI assistance (Claude, https://claude.ai). Uses torchvision ResNet50, scikit-learn, scikit-image.
 """
 Model implementations for Stanford Cars classification: a naive baseline, a
 classical HOG + linear SVM, and a transfer-learning deep model (frozen ResNet50
