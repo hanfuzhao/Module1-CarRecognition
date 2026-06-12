@@ -1,4 +1,4 @@
-# Built with AI assistance (Claude). Uses Flask and torch/torchvision.
+# Built with AI assistance (Claude, https://claude.ai). Uses Flask and torch/torchvision.
 """
 Interactive web app for car-type recognition (inference only).
 

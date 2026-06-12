@@ -1,4 +1,4 @@
-# Built with AI assistance (Claude). Uses torch/torchvision, scikit-learn, matplotlib.
+# Built with AI assistance (Claude, https://claude.ai). Uses torch/torchvision, scikit-learn, matplotlib.
 """
 End-to-end pipeline: build data artifacts, train all three models, evaluate on
 the test set, run the robustness and confidence experiments, and write metrics

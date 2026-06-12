@@ -1,4 +1,4 @@
-# Built with AI assistance (Claude). Data: Stanford Cars via HF tanganke/stanford_cars.
+# Built with AI assistance (Claude, https://claude.ai). Data: Stanford Cars via HF tanganke/stanford_cars.
 """
 Data access for the Stanford Cars dataset.
 
